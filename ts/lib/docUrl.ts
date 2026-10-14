@@ -27,6 +27,21 @@ export function isDocUrl(url: string, site: Pick<SiteProfile, "host" | "pathPref
 }
 
 /**
+ * URL を絶対 URL にする (読めなければ, そのまま).
+ *
+ * @param value 相対 URL か絶対 URL
+ * @param base ページの URL
+ * @returns 絶対 URL
+ */
+export function absoluteUrl(value: string, base: string): string {
+  try {
+    return new URL(value, base).href;
+  } catch {
+    return value;
+  }
+}
+
+/**
  * URL から, フラグメント (#以降) を除く.
  *
  * @param url URL

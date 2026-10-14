@@ -52,8 +52,27 @@ pub fn build_client(site: Site) -> Result<reqwest::Client, String> {
         .map_err(|e| e.to_string())
 }
 
+/// 取得するものの種類.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Kind {
+    /// ページの HTML.
+    Html,
+    /// サイトの JSON ファイル (メニューなど).
+    Json,
+}
+
 /// ページの HTML を取得する.
 pub async fn fetch_page(client: &reqwest::Client, host: &str, url: &str) -> Result<String, String> {
+    fetch_text(client, host, url, Kind::Html).await
+}
+
+/// サイトのテキスト (HTML か JSON) を取得する (ホストが違えば, 通信しないで失敗する).
+pub async fn fetch_text(
+    client: &reqwest::Client,
+    host: &str,
+    url: &str,
+    kind: Kind,
+) -> Result<String, String> {
     if !is_doc_url(host, url) {
         return Err(format!("Not a documentation page: {url}"));
     }
@@ -65,6 +84,7 @@ pub async fn fetch_page(client: &reqwest::Client, host: &str, url: &str) -> Resu
             .get(reqwest::header::CONTENT_TYPE)
             .and_then(|value| value.to_str().ok()),
         response.content_length(),
+        kind,
     )?;
     let text = response.text().await.map_err(|e| e.to_string())?;
     if text.len() > MAX_BYTES {
@@ -79,12 +99,17 @@ fn check_response(
     status: u16,
     content_type: Option<&str>,
     length: Option<u64>,
+    kind: Kind,
 ) -> Result<(), String> {
     if !(200..300).contains(&status) {
         return Err(format!("HTTP {status}"));
     }
-    if !content_type.is_some_and(|value| value.starts_with("text/html")) {
-        return Err("The page is not HTML".to_string());
+    let accepted = content_type.is_some_and(|value| match kind {
+        Kind::Html => value.starts_with("text/html"),
+        Kind::Json => value.contains("json") || value.starts_with("text/plain"),
+    });
+    if !accepted {
+        return Err("The page has an unexpected content type".to_string());
     }
     if length.is_some_and(|value| value > MAX_BYTES as u64) {
         return Err("The page is too large".to_string());
@@ -114,15 +139,25 @@ mod tests {
 
     #[test]
     fn checks_the_response() {
-        assert!(check_response(200, Some("text/html; charset=utf-8"), Some(10)).is_ok());
-        assert!(check_response(200, Some("text/html"), None).is_ok());
+        let html = Kind::Html;
+        assert!(check_response(200, Some("text/html; charset=utf-8"), Some(10), html).is_ok());
+        assert!(check_response(200, Some("text/html"), None, html).is_ok());
         assert_eq!(
-            check_response(404, Some("text/html"), None),
+            check_response(404, Some("text/html"), None, html),
             Err("HTTP 404".to_string())
         );
-        assert!(check_response(200, Some("image/png"), None).is_err());
-        assert!(check_response(200, None, None).is_err());
-        assert!(check_response(200, Some("text/html"), Some(MAX_BYTES as u64 + 1)).is_err());
+        assert!(check_response(200, Some("image/png"), None, html).is_err());
+        assert!(check_response(200, Some("application/json"), None, html).is_err());
+        assert!(check_response(200, None, None, html).is_err());
+        assert!(check_response(200, Some("text/html"), Some(MAX_BYTES as u64 + 1), html).is_err());
+    }
+
+    #[test]
+    fn accepts_json_only_for_the_json_kind() {
+        let json = Kind::Json;
+        assert!(check_response(200, Some("application/json; charset=utf-8"), None, json).is_ok());
+        assert!(check_response(200, Some("text/plain"), None, json).is_ok());
+        assert!(check_response(200, Some("text/html"), None, json).is_err());
     }
 
     #[tokio::test]

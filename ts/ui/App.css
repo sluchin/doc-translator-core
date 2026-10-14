@@ -275,3 +275,99 @@ input {
   color: var(--muted);
   font-size: 0.85rem;
 }
+
+/* ナビゲーションドロワー (メニュー) */
+.drawer-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+}
+
+.drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.drawer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(340px, 86vw);
+  overflow: auto;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.drawer-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.drawer-head strong {
+  flex: 1;
+}
+
+.drawer-busy,
+.drawer-empty {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.drawer-empty {
+  padding: 12px;
+}
+
+.drawer ul {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 14px;
+}
+
+.drawer nav > ul {
+  padding: 4px 4px 12px 0;
+}
+
+.menu-row {
+  display: flex;
+  align-items: flex-start;
+  border-radius: 6px;
+}
+
+.menu-row.current {
+  background: var(--note-bg);
+  font-weight: 700;
+}
+
+.menu-toggle {
+  flex: none;
+  width: 28px;
+  min-height: 32px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+}
+
+.menu-link {
+  flex: 1;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: 6px 4px;
+  min-height: 32px;
+  color: var(--fg);
+  font-weight: inherit;
+}
+
+.menu-link.heading {
+  color: var(--muted);
+}

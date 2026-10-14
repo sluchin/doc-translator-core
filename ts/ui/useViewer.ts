@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { SiteProfile } from "../lib/profile";
+import type { MenuItem, SiteProfile } from "../lib/profile";
 import * as api from "./api";
 import { hashOf, withoutHash } from "../lib/docUrl";
 import { type DocPage, extractPage } from "../lib/extract";
@@ -60,6 +60,8 @@ export interface Viewer {
   kept: number;
   /** 表示してから,移動するフラグメント (#以降の名前). */
   anchor: string;
+  /** メニュー (目次). */
+  menu: readonly MenuItem[];
   /** 戻れるか. */
   canBack: boolean;
   /** 進めるか. */
@@ -94,6 +96,8 @@ export function useViewer(profile: SiteProfile): Viewer {
   const [error, setError] = useState<string>();
   const [needsKey, setNeedsKey] = useState(false);
   const [anchor, setAnchor] = useState("");
+  const [htmlMenu, setHtmlMenu] = useState<readonly MenuItem[]>([]);
+  const [jsonMenu, setJsonMenu] = useState<readonly MenuItem[]>([]);
   const cache = useRef(new Map<string, Entry>());
   const job = useRef({ aborted: false });
 
@@ -118,6 +122,9 @@ export function useViewer(profile: SiteProfile): Viewer {
           }
         }
         setEntry(found);
+        if (found.page.menu.length > 0) {
+          setHtmlMenu(found.page.menu);
+        }
         setLoading(false);
         if (language === "ja" && !found.translated) {
           const translated = await translatePage(found.page, api.translate, setProgress, signal);
@@ -151,6 +158,18 @@ export function useViewer(profile: SiteProfile): Viewer {
     void show(profile.homeUrl, "ja");
   }, [show, profile.homeUrl]);
 
+  useEffect(() => {
+    const source = profile.menu;
+    if (source?.type !== "json") {
+      return;
+    }
+    // メニューの JSON を取得する (失敗しても、メニューが出ないだけ)
+    api
+      .fetchJson(source.url)
+      .then((text) => setJsonMenu(source.parse(JSON.parse(text), source.url)))
+      .catch(() => undefined);
+  }, [profile]);
+
   const open = useCallback(
     (url: string) => {
       setNav((n) => push(n, url));
@@ -183,6 +202,7 @@ export function useViewer(profile: SiteProfile): Viewer {
     needsKey,
     kept: showTranslation ? (entry.translated?.kept ?? 0) : 0,
     anchor,
+    menu: profile.menu?.type === "json" ? jsonMenu : htmlMenu,
     canBack: canGoBack(nav),
     canForward: canGoForward(nav),
     open,

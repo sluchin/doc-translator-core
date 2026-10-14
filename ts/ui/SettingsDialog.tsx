@@ -28,6 +28,8 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
   const [geminiKey, setGeminiKey] = useState("");
   const [model, setModel] = useState("");
   const [message, setMessage] = useState<string>();
+  const [checking, setChecking] = useState(false);
+  const [checkResult, setCheckResult] = useState<string>();
 
   useEffect(() => {
     void api.getSettings().then((loaded) => {
@@ -52,6 +54,18 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
       onSaved();
     } catch (e) {
       setMessage(String(e));
+    }
+  };
+
+  const check = async () => {
+    setChecking(true);
+    setCheckResult(undefined);
+    try {
+      setCheckResult(`動きました: "Hello, world" → ${await api.checkMlkit()}`);
+    } catch (e) {
+      setCheckResult(`失敗しました: ${String(e)}`);
+    } finally {
+      setChecking(false);
     }
   };
 
@@ -127,6 +141,14 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
             キーは要りません。初めて使うときに、翻訳のモデル（約 30 MB）を取得します。2
             回目からは、通信しないで翻訳します。品質は、クラウドの翻訳より低めです。
           </p>
+        )}
+        {provider === "mlkit" && (
+          <>
+            <button onClick={() => void check()} disabled={checking}>
+              {checking ? "確認しています (モデルを取得中)…" : "動作を確認する (モデルを取得)"}
+            </button>
+            {checkResult && <p className="hint">{checkResult}</p>}
+          </>
         )}
         <p className="hint">
           キーは、この端末のアプリ専用の場所に保存して、翻訳の依頼だけに使います。

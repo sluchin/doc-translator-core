@@ -69,6 +69,23 @@ async fn fetch_page(state: State<'_, AppState>, url: String) -> Result<String, S
     docs::fetch_page(&state.client, state.site.host, &url).await
 }
 
+/// サイトの JSON ファイル (メニューなど) を取得する.
+#[tauri::command]
+async fn fetch_json(state: State<'_, AppState>, url: String) -> Result<String, String> {
+    docs::fetch_text(&state.client, state.site.host, &url, docs::Kind::Json).await
+}
+
+/// ML Kit が動くかを確かめる (翻訳のモデルを取得して, 短い文章を翻訳する. 設定の画面から呼ぶ).
+#[tauri::command]
+async fn check_mlkit(app: tauri::AppHandle) -> Result<String, String> {
+    if !MLKIT_AVAILABLE {
+        return Err("ML Kit is available only on Android".to_string());
+    }
+    let sample = ["Hello, world".to_string()];
+
+    Ok(MlKit { app }.translate_plain(&sample).await?.join(" "))
+}
+
 /// 文章 (HTML の断片) を日本語に翻訳する. 同じ文章は, キャッシュから返す.
 #[tauri::command]
 async fn translate(
@@ -170,7 +187,9 @@ pub fn builder(site: Site) -> tauri::Builder<tauri::Wry> {
         })
         .invoke_handler(tauri::generate_handler![
             fetch_page,
+            fetch_json,
             translate,
+            check_mlkit,
             get_settings,
             set_settings
         ])

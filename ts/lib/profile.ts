@@ -4,6 +4,33 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+/** メニュー (目次) の 1 つの項目. */
+export interface MenuItem {
+  /** 表示する名前. */
+  readonly title: string;
+  /** ページの絶対 URL (見出しだけの項目は, なし). */
+  readonly url?: string;
+  /** 子の項目. */
+  readonly children: readonly MenuItem[];
+}
+
+/** メニューの取り方: ページの HTML の中にあるか, 別の JSON ファイルにあるか. */
+export type MenuSource =
+  | {
+      /** ページの HTML の中の, メニューの要素から読む. */
+      readonly type: "html";
+      /** メニューの要素の CSS セレクタ (中の, 入れ子の `ul` を読む). */
+      readonly selector: string;
+    }
+  | {
+      /** サイトの JSON ファイル (ホストの中) から読む. */
+      readonly type: "json";
+      /** JSON の URL. */
+      readonly url: string;
+      /** JSON を, メニューの項目にする. */
+      readonly parse: (json: unknown, base: string) => MenuItem[];
+    };
+
 /** 翻訳するドキュメントのサイトごとの設定 (アプリごとに 1 つ). */
 export interface SiteProfile {
   /** アプリの名前 (タイトルの表示に使う). */
@@ -20,4 +47,6 @@ export interface SiteProfile {
   readonly removeSelectors: readonly string[];
   /** タイトルの末尾の, サイト名 (取り除く). */
   readonly titleSuffix: RegExp;
+  /** メニュー (目次) の取り方 (なければ, メニューを出さない). */
+  readonly menu?: MenuSource;
 }

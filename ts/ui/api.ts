@@ -20,6 +20,25 @@ export function fetchPage(url: string): Promise<string> {
 }
 
 /**
+ * サイトの JSON ファイル (メニューなど) を、Rust 側で取得する.
+ *
+ * @param url JSON の URL
+ * @returns JSON の文字列
+ */
+export function fetchJson(url: string): Promise<string> {
+  return invoke<string>("fetch_json", { url });
+}
+
+/**
+ * ML Kit が動くかを確かめる (翻訳のモデルを取得して、短い文章を翻訳する).
+ *
+ * @returns 翻訳の結果 (失敗したら、例外)
+ */
+export function checkMlkit(): Promise<string> {
+  return invoke<string>("check_mlkit");
+}
+
+/**
  * 文章 (HTML の断片) を、Rust 側で日本語に翻訳する.
  *
  * @param texts 文章

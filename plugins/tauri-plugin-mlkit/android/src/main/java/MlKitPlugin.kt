@@ -7,6 +7,7 @@
 package jp.sluchin.zephyrdoc.mlkit
 
 import android.app.Activity
+import android.util.Log
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
 import app.tauri.annotation.TauriPlugin
@@ -40,6 +41,11 @@ class MlKitPlugin(
 ) : Plugin(activity) {
     private val executor = Executors.newSingleThreadExecutor()
 
+    private companion object {
+        /** ログのタグ (`adb logcat -s MlKitPlugin`). */
+        const val TAG = "MlKitPlugin"
+    }
+
     private val translator: Translator by lazy {
         Translation.getClient(
             TranslatorOptions
@@ -56,12 +62,16 @@ class MlKitPlugin(
         val args = invoke.parseArgs(TranslateArgs::class.java)
         executor.execute {
             try {
+                Log.d(TAG, "Download the model if needed, then translate ${args.texts.size} texts")
                 Tasks.await(translator.downloadModelIfNeeded(DownloadConditions.Builder().build()))
                 val texts = JSArray()
                 args.texts.forEach { texts.put(Tasks.await(translator.translate(it))) }
                 invoke.resolve(JSObject().apply { put("texts", texts) })
             } catch (e: Exception) {
-                invoke.reject(e.message ?: e.javaClass.simpleName)
+                // 原因が分かるよう、例外の種類 (ExecutionException の中の原因も) と、メッセージを返す
+                val cause = e.cause ?: e
+                Log.e(TAG, "Translation failed", e)
+                invoke.reject("${cause.javaClass.simpleName}: ${cause.message ?: "no message"}")
             }
         }
     }

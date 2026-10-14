@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import { Doc } from "./Doc";
+import { Drawer } from "./Drawer";
 import { SettingsDialog } from "./SettingsDialog";
 import { isDocUrl } from "../lib/docUrl";
 import type { SiteProfile } from "../lib/profile";
@@ -27,6 +28,7 @@ interface Props {
 export default function App({ profile }: Props) {
   const viewer = useViewer(profile);
   const [settings, setSettings] = useState(false);
+  const [drawer, setDrawer] = useState(false);
   const [address, setAddress] = useState<string>();
 
   useEffect(() => {
@@ -44,6 +46,11 @@ export default function App({ profile }: Props) {
   return (
     <div className="app">
       <header className="toolbar">
+        {profile.menu && (
+          <button onClick={() => setDrawer(true)} aria-label="メニュー">
+            ☰
+          </button>
+        )}
         <button onClick={viewer.goBack} disabled={!viewer.canBack} aria-label="戻る">
           ←
         </button>
@@ -104,6 +111,14 @@ export default function App({ profile }: Props) {
           onOpen={viewer.open}
         />
       </main>
+      <Drawer
+        open={drawer}
+        onClose={() => setDrawer(false)}
+        menu={viewer.menu}
+        currentUrl={viewer.url}
+        lang={viewer.lang}
+        onOpen={viewer.open}
+      />
       {settings && <SettingsDialog onClose={() => setSettings(false)} onSaved={viewer.retry} />}
     </div>
   );
