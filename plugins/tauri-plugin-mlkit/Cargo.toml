@@ -1,0 +1,17 @@
+[package]
+name = "tauri-plugin-mlkit"
+version = "0.1.0"
+authors = ["Tetsuya Higashi"]
+description = "Translates text on the device with ML Kit (Android only)"
+license = "GPL-3.0-or-later"
+edition = "2024"
+rust-version = "1.90"
+links = "tauri-plugin-mlkit"
+
+[dependencies]
+tauri = { version = "2.12.3" }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+
+[build-dependencies]
+tauri-plugin = { version = "2.7.1", features = ["build"] }

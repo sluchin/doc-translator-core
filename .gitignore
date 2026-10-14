@@ -1,0 +1,16 @@
+# Node.js
+node_modules/
+coverage/
+*.tsbuildinfo
+
+# Rust
+target/
+
+# Android プラグインのビルドの生成物
+plugins/*/android/build/
+plugins/*/android/.gradle/
+plugins/*/android/local.properties
+
+*.log
+.idea/
+.vscode/

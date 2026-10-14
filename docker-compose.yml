@@ -1,0 +1,58 @@
+# 共通のライブラリの検査. アプリ (zephyr-doc, kotlin-doc) も, 同じ開発用のイメージ (docker/Dockerfile) を使う.
+# コンテナは, ホストのユーザーで実行する. UID と GID は, シェルでエクスポートしておく
+x-common: &common
+  build:
+    context: docker
+    dockerfile: Dockerfile
+    target: dev
+  image: doc-translator-dev:latest
+  volumes:
+    - .:/workspace
+    - ${CARGO_HOME_DIR:-cargo-home}:/cargo-home
+    - npm-cache:/npm-cache
+  working_dir: /workspace
+  user: "${UID:-0}:${GID:-0}"
+  environment:
+    - HOME=/tmp
+
+services:
+  # 開発シェル
+  dev:
+    <<: *common
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+
+  # 依存関係を入れる (node_modules)
+  install:
+    <<: *common
+    command: npm ci
+
+  # TypeScript の単体テスト (Vitest + jsdom) と, Rust の単体テスト
+  test:
+    <<: *common
+    command: sh -c "npm test && cargo test"
+
+  # TypeScript のカバレッジ (ts/lib の行と分岐が 100% でなければ失敗する)
+  coverage:
+    <<: *common
+    command: npm run coverage
+
+  # 整形の確認 (Prettier と rustfmt)
+  format:
+    <<: *common
+    command: sh -c "npm run format && cargo fmt --all --check"
+
+  # 整形して, ファイルを書き換える
+  format-fix:
+    <<: *common
+    command: sh -c "npm run format:fix && cargo fmt --all"
+
+  # 静的解析: 型の検査 (tsc), ESLint, Clippy (警告があれば失敗する)
+  analyze:
+    <<: *common
+    command: sh -c "npm run typecheck && npm run lint && cargo clippy --all-targets -- -D warnings"
+
+volumes:
+  cargo-home:
+  npm-cache:

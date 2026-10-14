@@ -1,0 +1,6 @@
+coverage
+node_modules
+target
+package-lock.json
+.github
+plugins/*/android/build

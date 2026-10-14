@@ -1,0 +1,20 @@
+[package]
+name = "doc-translator-core"
+version = "0.1.0"
+description = "The common Rust code of the documentation translator apps (Tauri)"
+authors = ["Tetsuya Higashi"]
+license = "GPL-3.0-or-later"
+edition = "2024"
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-mlkit = { path = "../plugins/tauri-plugin-mlkit" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# TLS は rustls (Android でも同じように動く. OpenSSL を使わない)
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "gzip"] }
+sha2 = "0.10"
+tokio = { version = "1", features = ["macros", "rt", "time"] }
+url = "2"
+regex = "1"

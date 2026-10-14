@@ -1,0 +1,68 @@
+name: CI
+
+# 開発環境 (Dockerfile) と同じイメージで, docker compose のサービスを実行する.
+#   test    : TypeScript (Vitest) と Rust の単体テスト
+#   coverage: ts/lib の行と分岐のカバレッジが 100% であること
+#   format  : 整形の確認 (Prettier, rustfmt)
+#   analyze : 型の検査, ESLint, Clippy
+#   cleanup : 3 日より前の実行 (ログと artifact) を, push のたびに削除する
+
+on:
+  push:
+    branches: [ main, ccr-* ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  check:
+    name: ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [ test, coverage, format, analyze ]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build the development image
+        run: docker compose build dev
+
+      - name: Install the dependencies
+        run: env UID="$(id -u)" GID="$(id -g)" docker compose run --rm install
+
+      - name: Run ${{ matrix.service }}
+        run: |
+          set -o pipefail
+          env UID="$(id -u)" GID="$(id -g)" docker compose run --rm ${{ matrix.service }} 2>&1 | tee "$RUNNER_TEMP/${{ matrix.service }}.log"
+
+      - name: Upload the log
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.service }}_log
+          path: ${{ runner.temp }}/${{ matrix.service }}.log
+          if-no-files-found: warn
+          retention-days: 3
+
+  cleanup:
+    name: Delete the old runs
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      KEEP_DAYS: 3
+
+    steps:
+      - name: Delete the runs older than KEEP_DAYS
+        run: |
+          cutoff="$(date -u -d "${KEEP_DAYS} days ago" +%Y-%m-%dT%H:%M:%SZ)"
+          echo "Deleting the runs created before ${cutoff}"
+          gh api --paginate -X GET "repos/${GITHUB_REPOSITORY}/actions/runs" \
+            -f per_page=100 -f created="<${cutoff}" --jq '.workflow_runs[].id' |
+            while read -r id; do
+              echo "Delete the run ${id}"
+              gh api -X DELETE "repos/${GITHUB_REPOSITORY}/actions/runs/${id}" || true
+            done

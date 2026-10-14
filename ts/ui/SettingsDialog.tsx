@@ -1,0 +1,148 @@
+/**
+ * Copyright (c) 2026 Tetsuya Higashi
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { useEffect, useState } from "react";
+import * as api from "./api";
+
+/** 設定の画面の引数. */
+interface Props {
+  /** 閉じる. */
+  onClose: () => void;
+  /** 設定を保存したときに呼ぶ. */
+  onSaved: () => void;
+}
+
+/**
+ * 翻訳サービス (Google Cloud Translation, Gemini, ML Kit) と、API キーを設定する画面.
+ *
+ * @param props 引数
+ * @returns 画面
+ */
+export function SettingsDialog({ onClose, onSaved }: Props) {
+  const [view, setView] = useState<api.SettingsView>();
+  const [provider, setProvider] = useState<api.Provider>("google");
+  const [googleKey, setGoogleKey] = useState("");
+  const [geminiKey, setGeminiKey] = useState("");
+  const [model, setModel] = useState("");
+  const [message, setMessage] = useState<string>();
+
+  useEffect(() => {
+    void api.getSettings().then((loaded) => {
+      setView(loaded);
+      setProvider(loaded.provider);
+      setModel(loaded.geminiModel);
+    });
+  }, []);
+
+  const save = async (clear?: "google" | "gemini") => {
+    try {
+      const saved = await api.setSettings({
+        provider,
+        googleKey: clear === "google" ? "" : googleKey || undefined,
+        geminiKey: clear === "gemini" ? "" : geminiKey || undefined,
+        geminiModel: model,
+      });
+      setView(saved);
+      setGoogleKey("");
+      setGeminiKey("");
+      setMessage(undefined);
+      onSaved();
+    } catch (e) {
+      setMessage(String(e));
+    }
+  };
+
+  if (!view) {
+    return null;
+  }
+  const status = (has: boolean) => (has ? "(設定済み)" : "(未設定)");
+
+  return (
+    <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div className="dialog">
+        <h2 id="settings-title">設定</h2>
+        <fieldset>
+          <legend>翻訳サービス</legend>
+          <label className="choice">
+            <input
+              type="radio"
+              checked={provider === "google"}
+              onChange={() => setProvider("google")}
+            />
+            Google Cloud Translation
+          </label>
+          <label className="choice">
+            <input
+              type="radio"
+              checked={provider === "gemini"}
+              onChange={() => setProvider("gemini")}
+            />
+            Gemini API
+          </label>
+          <label className="choice">
+            <input
+              type="radio"
+              checked={provider === "mlkit"}
+              disabled={!view.mlkitAvailable}
+              onChange={() => setProvider("mlkit")}
+            />
+            ML Kit（端末の中で翻訳。Android のみ）
+          </label>
+        </fieldset>
+        {provider === "google" && (
+          <label>
+            Google の API キー {status(view.hasGoogleKey)}
+            <input
+              type="password"
+              value={googleKey}
+              autoComplete="off"
+              placeholder={view.hasGoogleKey ? "変えるときだけ入力" : "AIza..."}
+              onChange={(event) => setGoogleKey(event.target.value)}
+            />
+          </label>
+        )}
+        {provider === "gemini" && (
+          <>
+            <label>
+              Gemini の API キー {status(view.hasGeminiKey)}
+              <input
+                type="password"
+                value={geminiKey}
+                autoComplete="off"
+                placeholder={view.hasGeminiKey ? "変えるときだけ入力" : "AIza..."}
+                onChange={(event) => setGeminiKey(event.target.value)}
+              />
+            </label>
+            <label>
+              モデル
+              <input value={model} spellCheck={false} onChange={(e) => setModel(e.target.value)} />
+            </label>
+          </>
+        )}
+        {provider === "mlkit" && (
+          <p>
+            キーは要りません。初めて使うときに、翻訳のモデル（約 30 MB）を取得します。2
+            回目からは、通信しないで翻訳します。品質は、クラウドの翻訳より低めです。
+          </p>
+        )}
+        <p className="hint">
+          キーは、この端末のアプリ専用の場所に保存して、翻訳の依頼だけに使います。
+        </p>
+        {message && <p className="error">{message}</p>}
+        <div className="actions">
+          {provider === "google" && view.hasGoogleKey && (
+            <button onClick={() => void save("google")}>キーを消す</button>
+          )}
+          {provider === "gemini" && view.hasGeminiKey && (
+            <button onClick={() => void save("gemini")}>キーを消す</button>
+          )}
+          <button onClick={() => void save()}>保存</button>
+          <button onClick={onClose}>閉じる</button>
+        </div>
+      </div>
+    </div>
+  );
+}
