@@ -10,7 +10,7 @@
 | ディレクトリ                  | 内容                                                                                                                                              |
 | :---------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `ts/lib/`                     | HTML の取り出し (`extract`)、段落の分割 (`segments`)、翻訳の組み立て (`translatePage`)、履歴、URL、サニタイズ。テストあり (行と分岐が 100%)。     |
-| `ts/ui/`                      | React の画面 (`App`、`Doc`、`Drawer` (メニュー)、`SettingsDialog`、`useViewer`、`api`、`App.css`)。                                               |
+| `ts/ui/`                      | React の画面 (`App`、`Doc`、`Drawer` (メニューとしおり)、`SettingsDialog`、`useViewer`、`api`、`App.css`)。                                       |
 | `rust/`                       | Tauri の Rust 側 (クレート `doc-translator-core`): ページの取得、翻訳 (Google Cloud Translation、Gemini、ML Kit の目印の変換)、キャッシュ、設定。 |
 | `plugins/tauri-plugin-mlkit/` | ML Kit (Android のオンデバイス翻訳) の Tauri プラグイン (Kotlin)。                                                                                |
 | `docker/Dockerfile`           | 開発用のイメージ (Node.js、Rust、Android の SDK と NDK)。アプリも、これを使う。                                                                   |

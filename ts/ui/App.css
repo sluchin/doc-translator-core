@@ -96,9 +96,90 @@ input {
   background: var(--surface);
 }
 
+.toolbar {
+  flex-wrap: wrap;
+}
+
+/* 狭い画面 (スマホ) では、アドレスを、次の行に出して、ボタンが隠れないようにする */
 .toolbar .address {
-  flex: 1;
+  flex: 1 1 100%;
   min-width: 0;
+  order: 1;
+}
+
+@media (min-width: 900px) {
+  .toolbar .address {
+    flex: 1;
+    order: 0;
+  }
+}
+
+.content-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-wrap .content {
+  /* 標準のスクロールバーは隠して、右のスクロールバー (ScrollBar) を使う */
+  scrollbar-width: none;
+}
+
+.scrollbar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 28px;
+  /* 指で触れる幅は広く、見た目は細く */
+  touch-action: none;
+}
+
+.scrollbar-thumb {
+  position: absolute;
+  right: 4px;
+  width: 6px;
+  border-radius: 3px;
+  background: var(--muted, #8888);
+  opacity: 0.6;
+}
+
+.scrollbar.pressed .scrollbar-thumb {
+  width: 10px;
+  opacity: 1;
+  background: var(--accent, #4a6cf7);
+}
+
+.scrollbar-bubble {
+  position: absolute;
+  right: 28px;
+  transform: translateY(-50%);
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px #0004;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.drawer-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px;
+}
+
+.drawer-tabs button[aria-selected="true"] {
+  font-weight: bold;
+}
+
+.bookmarks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 .status,

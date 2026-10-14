@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MenuItem, SiteProfile } from "../lib/profile";
 import * as api from "./api";
-import { hashOf, withoutHash } from "../lib/docUrl";
+import { hashOf, isDocUrl, withoutHash } from "../lib/docUrl";
 import { type DocPage, extractPage } from "../lib/extract";
 import {
   EMPTY_NAV,
@@ -19,6 +19,18 @@ import {
   forward,
   push,
 } from "../lib/history";
+import { type Metrics, type Position, screenPosition, scrollRatio } from "../lib/progress";
+import {
+  type Bookmark,
+  type KeyValue,
+  type Saved,
+  isBookmarked,
+  loadSaved,
+  storeSaved,
+  toggleBookmark,
+  withLast,
+  withScroll,
+} from "../lib/saved";
 import {
   AbortedError,
   DEFAULT_LIMITS,
@@ -39,6 +51,22 @@ interface Entry {
 
 /** 覚えておくページの数 (多いものから、古い順に捨てる). */
 const CACHE_PAGES = 30;
+
+/** 位置を書き込むまでの待ち時間 [ms] (スクロールのたびには、書かない). */
+const SAVE_DELAY_MS = 400;
+
+/**
+ * 覚えておく先 (端末の `localStorage`. 使えなければ undefined).
+ *
+ * @returns 保存先
+ */
+function storage(): KeyValue | undefined {
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
+}
 
 /** 画面に出す、ビューアの状態と操作. */
 export interface Viewer {
@@ -64,6 +92,20 @@ export interface Viewer {
   anchor: string;
   /** メニュー (目次). */
   menu: readonly MenuItem[];
+  /** 表示している本文のページの URL (フラグメントなし. 取得が終わるまでは、前のページ). */
+  docUrl: string;
+  /** 開いたときに戻す、読んだ位置 (0 から 1. 覚えていなければ undefined). */
+  restore?: number;
+  /** 本文のスクロールの状態 (スクロールバーに使う). */
+  metrics: Metrics;
+  /** 今のページの、読んでいる場所 (何画面目か / 全体で何画面か). */
+  position: Position;
+  /** 今のページを、どこまで読んだか (0 から 1). */
+  scroll: number;
+  /** しおり. */
+  bookmarks: readonly Bookmark[];
+  /** 今のページに、しおりがあるか. */
+  bookmarked: boolean;
   /** 戻れるか. */
   canBack: boolean;
   /** 進めるか. */
@@ -74,6 +116,14 @@ export interface Viewer {
   goBack: () => void;
   /** 進む. */
   goForward: () => void;
+  /** トップのページを開く. */
+  home: () => void;
+  /** 本文をスクロールした (読んだ位置を、少し待って、覚える). */
+  setScroll: (metrics: Metrics) => void;
+  /** 今のページのしおりを、付ける (あれば外す). */
+  toggleBookmark: () => void;
+  /** しおりを外す. */
+  removeBookmark: (url: string) => void;
   /** 言語を切り替える. */
   toggleLang: () => void;
   /** 翻訳をやり直す (API キーを設定したあとなど). */
@@ -90,7 +140,20 @@ export interface Viewer {
  * @returns ビューア
  */
 export function useViewer(profile: SiteProfile): Viewer {
-  const [nav, setNav] = useState<Nav>(() => push(EMPTY_NAV, profile.homeUrl));
+  const storeKey = `doc-translator:${profile.host}`;
+  const [initial] = useState(() => {
+    const store = storage();
+    const saved = loadSaved(store, storeKey);
+    const last = saved.last && isDocUrl(saved.last, profile) ? saved.last : profile.homeUrl;
+    return { store, saved, start: last };
+  });
+  const savedRef = useRef<Saved>(initial.saved);
+  const [nav, setNav] = useState<Nav>(() => push(EMPTY_NAV, initial.start));
+  const [bookmarks, setBookmarks] = useState(initial.saved.bookmarks);
+  const [restore, setRestore] = useState<number>();
+  const [metrics, setMetrics] = useState<Metrics>({ top: 0, height: 0, view: 0 });
+  const latest = useRef<{ url: string; ratio: number }>(undefined);
+  const timer = useRef<number>(undefined);
   const [lang, setLang] = useState<Lang>("ja");
   const [entry, setEntry] = useState<Entry>();
   const [loading, setLoading] = useState(false);
@@ -101,6 +164,26 @@ export function useViewer(profile: SiteProfile): Viewer {
   const [htmlMenu, setHtmlMenu] = useState<readonly MenuItem[]>([]);
   const [jsonMenu, setJsonMenu] = useState<readonly MenuItem[]>([]);
   const cache = useRef(new Map<string, Entry>());
+  const loaded = entry !== undefined;
+  const docUrl = entry?.page.url ?? withoutHash(initial.start);
+
+  const persist = useCallback(
+    (next: Saved) => {
+      savedRef.current = next;
+      storeSaved(initial.store, storeKey, next);
+    },
+    [initial.store, storeKey],
+  );
+
+  /** 待っている位置を、すぐに書き込む. */
+  const flush = useCallback(() => {
+    window.clearTimeout(timer.current);
+    const pending = latest.current;
+    if (pending) {
+      latest.current = undefined;
+      persist(withScroll(savedRef.current, pending.url, pending.ratio));
+    }
+  }, [persist]);
   const job = useRef({ aborted: false });
 
   const show = useCallback(
@@ -109,6 +192,9 @@ export function useViewer(profile: SiteProfile): Viewer {
       const signal = { aborted: false };
       job.current = signal;
       const key = withoutHash(url);
+      flush();
+      persist(withLast(savedRef.current, key));
+      setRestore(hashOf(url) ? undefined : savedRef.current.scroll[key]);
       setError(undefined);
       setNeedsKey(false);
       setProgress(undefined);
@@ -160,14 +246,24 @@ export function useViewer(profile: SiteProfile): Viewer {
         }
       }
     },
-    [profile],
+    [profile, flush, persist],
   );
 
   useEffect(() => {
-    // 起動したときに、最初のページを取得して翻訳する (外部への通信を始める処理)
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void show(profile.homeUrl, "ja");
-  }, [show, profile.homeUrl]);
+    // 起動したときに、前回読んだページ (なければ、トップ) を取得して翻訳する (外部への通信を始める処理)
+    void show(initial.start, "ja");
+  }, [show, initial.start]);
+
+  useEffect(() => {
+    // 画面が隠れたとき (アプリが裏に回ったとき) は、すぐに、読んだ位置を書き込む
+    const hide = () => document.visibilityState === "hidden" && flush();
+    document.addEventListener("visibilitychange", hide);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", hide);
+      window.removeEventListener("pagehide", flush);
+    };
+  }, [flush]);
 
   useEffect(() => {
     const source = profile.menu;
@@ -200,12 +296,38 @@ export function useViewer(profile: SiteProfile): Viewer {
     void show(current(nav) as string, next);
   };
 
+  const setScroll = useCallback(
+    (next: Metrics) => {
+      setMetrics(next);
+      if (!loaded) {
+        // 本文を読み込む前は、位置を上書きしない (前回の位置を、これから戻すため)
+        return;
+      }
+      const ratio = scrollRatio(next.top, next.height, next.view);
+      if (latest.current && latest.current.url !== docUrl) {
+        flush();
+      }
+      latest.current = { url: docUrl, ratio };
+      window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(flush, SAVE_DELAY_MS);
+    },
+    [docUrl, flush, loaded],
+  );
+
+  const url = current(nav) ?? profile.homeUrl;
+  const title = (lang === "ja" && entry?.translated?.title) || entry?.page.title || url;
+  const changeBookmarks = (next: readonly Bookmark[]) => {
+    persist({ ...savedRef.current, bookmarks: next });
+    setBookmarks(next);
+  };
+  const menu = profile.menu?.type === "json" ? jsonMenu : htmlMenu;
+
   const showTranslation = lang === "ja" && entry?.translated;
 
   return {
     title: (showTranslation ? entry.translated?.title : entry?.page.title) ?? "",
     html: (showTranslation ? entry.translated?.html : entry?.page.html) ?? "",
-    url: current(nav) ?? profile.homeUrl,
+    url,
     lang,
     loading,
     progress,
@@ -213,12 +335,23 @@ export function useViewer(profile: SiteProfile): Viewer {
     needsKey,
     kept: showTranslation ? (entry.translated?.kept ?? 0) : 0,
     anchor,
-    menu: profile.menu?.type === "json" ? jsonMenu : htmlMenu,
+    menu,
+    docUrl,
+    restore,
+    metrics,
+    position: screenPosition(metrics),
+    scroll: scrollRatio(metrics.top, metrics.height, metrics.view),
+    bookmarks,
+    bookmarked: isBookmarked(bookmarks, withoutHash(url)),
     canBack: canGoBack(nav),
     canForward: canGoForward(nav),
     open,
     goBack: () => move(back(nav)),
     goForward: () => move(forward(nav)),
+    home: () => open(profile.homeUrl),
+    setScroll,
+    toggleBookmark: () => changeBookmarks(toggleBookmark(bookmarks, withoutHash(url), title)),
+    removeBookmark: (target) => changeBookmarks(bookmarks.filter((b) => b.url !== target)),
     toggleLang,
     retry: () => void show(current(nav) as string, lang),
   };

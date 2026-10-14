@@ -4,10 +4,11 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import { Doc } from "./Doc";
 import { Drawer } from "./Drawer";
+import { ScrollBar } from "./ScrollBar";
 import { SettingsDialog } from "./SettingsDialog";
 import { isDocUrl } from "../lib/docUrl";
 import type { SiteProfile } from "../lib/profile";
@@ -29,6 +30,7 @@ export default function App({ profile }: Props) {
   const viewer = useViewer(profile);
   const [settings, setSettings] = useState(false);
   const [drawer, setDrawer] = useState(false);
+  const box = useRef<HTMLElement>(null);
   const [address, setAddress] = useState<string>();
 
   useEffect(() => {
@@ -57,8 +59,15 @@ export default function App({ profile }: Props) {
         <button onClick={viewer.goForward} disabled={!viewer.canForward} aria-label="進む">
           →
         </button>
-        <button onClick={() => viewer.open(profile.homeUrl)} aria-label="トップ">
+        <button onClick={viewer.home} aria-label="トップ">
           ⌂
+        </button>
+        <button
+          onClick={viewer.toggleBookmark}
+          aria-pressed={viewer.bookmarked}
+          aria-label="しおり"
+        >
+          {viewer.bookmarked ? "★" : "☆"}
         </button>
         <input
           className="address"
@@ -102,21 +111,35 @@ export default function App({ profile }: Props) {
       {viewer.kept > 0 && (
         <div className="banner note">構造が崩れる文章 {viewer.kept} 件は、英語のままです。</div>
       )}
-      <main className="content">
-        <Doc
-          site={profile}
-          url={viewer.url}
-          html={viewer.html}
-          anchor={viewer.anchor}
-          onOpen={viewer.open}
+      <div className="content-wrap">
+        <main className="content" ref={box}>
+          <Doc
+            site={profile}
+            url={viewer.url}
+            docUrl={viewer.docUrl}
+            restore={viewer.restore}
+            onScroll={viewer.setScroll}
+            html={viewer.html}
+            anchor={viewer.anchor}
+            onOpen={viewer.open}
+          />
+        </main>
+        <ScrollBar
+          box={box}
+          metrics={viewer.metrics}
+          position={viewer.position}
+          ratio={viewer.scroll}
         />
-      </main>
+      </div>
       <Drawer
         open={drawer}
         onClose={() => setDrawer(false)}
         menu={viewer.menu}
         currentUrl={viewer.url}
         lang={viewer.lang}
+        bookmarks={viewer.bookmarks}
+        onRemoveBookmark={viewer.removeBookmark}
+        onHome={viewer.home}
         onOpen={viewer.open}
       />
       {settings && <SettingsDialog onClose={() => setSettings(false)} onSaved={viewer.retry} />}

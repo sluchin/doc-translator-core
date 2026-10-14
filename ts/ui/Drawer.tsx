@@ -13,6 +13,7 @@ import {
   withTitles,
 } from "../lib/menu";
 import type { MenuItem } from "../lib/profile";
+import type { Bookmark } from "../lib/saved";
 import * as api from "./api";
 import type { Lang } from "./useViewer";
 
@@ -28,6 +29,12 @@ interface Props {
   currentUrl: string;
   /** 表示の言語 (日本語なら、メニューの名前も翻訳する). */
   lang: Lang;
+  /** しおり. */
+  bookmarks: readonly Bookmark[];
+  /** しおりを外す. */
+  onRemoveBookmark: (url: string) => void;
+  /** トップのページを開く. */
+  onHome: () => void;
   /** ページを開く. */
   onOpen: (url: string) => void;
 }
@@ -105,7 +112,18 @@ function Item({ item, currentUrl, onOpen }: ItemProps) {
  * @param props 引数
  * @returns 画面 (閉じているときは、何も出さない)
  */
-export function Drawer({ open, onClose, menu, currentUrl, lang, onOpen }: Props) {
+export function Drawer({
+  open,
+  onClose,
+  menu,
+  currentUrl,
+  lang,
+  bookmarks,
+  onRemoveBookmark,
+  onHome,
+  onOpen,
+}: Props) {
+  const [tab, setTab] = useState<"menu" | "bookmarks">("menu");
   const [titles, setTitles] = useState<ReadonlyMap<string, string>>(new Map());
   const [busy, setBusy] = useState(false);
 
@@ -147,6 +165,10 @@ export function Drawer({ open, onClose, menu, currentUrl, lang, onOpen }: Props)
     onOpen(url);
     onClose();
   };
+  const home = () => {
+    onHome();
+    onClose();
+  };
 
   return (
     <div className="drawer-layer">
@@ -159,7 +181,41 @@ export function Drawer({ open, onClose, menu, currentUrl, lang, onOpen }: Props)
             ✕
           </button>
         </div>
-        {shown.length === 0 ? (
+        <div className="drawer-tabs" role="tablist">
+          <button onClick={home}>⌂ トップ</button>
+          <button role="tab" aria-selected={tab === "menu"} onClick={() => setTab("menu")}>
+            目次
+          </button>
+          <button
+            role="tab"
+            aria-selected={tab === "bookmarks"}
+            onClick={() => setTab("bookmarks")}
+          >
+            しおり ({bookmarks.length})
+          </button>
+        </div>
+        {tab === "bookmarks" ? (
+          bookmarks.length === 0 ? (
+            <p className="drawer-empty">しおりはありません。ツールバーの ☆ で付けられます。</p>
+          ) : (
+            <ul className="bookmarks">
+              {bookmarks.map((b) => (
+                <li key={b.url} className="menu-row">
+                  <button className="menu-link" onClick={() => choose(b.url)}>
+                    {b.title}
+                  </button>
+                  <button
+                    className="menu-toggle"
+                    aria-label="しおりを外す"
+                    onClick={() => onRemoveBookmark(b.url)}
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )
+        ) : shown.length === 0 ? (
           <p className="drawer-empty">メニューを読み込んでいます…</p>
         ) : (
           <nav>

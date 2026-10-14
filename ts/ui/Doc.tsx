@@ -5,9 +5,10 @@
  */
 
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { type MouseEvent, useEffect, useRef } from "react";
+import { type MouseEvent, useEffect, useLayoutEffect, useRef } from "react";
 import { isDocUrl, withoutHash } from "../lib/docUrl";
 import type { SiteProfile } from "../lib/profile";
+import { type Metrics, scrollRatio, scrollTopFor } from "../lib/progress";
 
 /** 本文の画面の引数. */
 interface Props {
@@ -15,6 +16,12 @@ interface Props {
   site: SiteProfile;
   /** 今のページの URL. */
   url: string;
+  /** 表示している本文のページの URL (取得が終わるまでは、前のページ). */
+  docUrl: string;
+  /** 開いたときに戻す、読んだ位置 (0 から 1). */
+  restore?: number;
+  /** スクロールしたとき (と、本文の長さが変わったとき) に、スクロールの状態を知らせる. */
+  onScroll: (metrics: Metrics) => void;
   /** 表示する本文の HTML (安全にしてある). */
   html: string;
   /** 表示してから、移動するフラグメントの名前. */
@@ -29,17 +36,52 @@ interface Props {
  * @param props 引数
  * @returns 本文
  */
-export function Doc({ site, url, html, anchor, onOpen }: Props) {
+export function Doc({ site, url, docUrl, restore, onScroll, html, anchor, onOpen }: Props) {
   const ref = useRef<HTMLElement>(null);
+  const shown = useRef("");
+  const ratio = useRef(0);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const box = ref.current?.parentElement;
+    if (!box) {
+      return;
+    }
     const target = anchor ? ref.current?.querySelector(`[id="${CSS.escape(anchor)}"]`) : undefined;
     if (target) {
       target.scrollIntoView();
-    } else if (ref.current) {
-      ref.current.parentElement?.scrollTo({ top: 0 });
+    } else {
+      // 別のページなら、覚えていた位置へ. 同じページの翻訳や原文への切り替えなら、読んでいた位置のまま
+      const at = shown.current === docUrl ? ratio.current : (restore ?? 0);
+      box.scrollTo({ top: scrollTopFor(at, box.scrollHeight, box.clientHeight) });
     }
-  }, [url, html, anchor]);
+    shown.current = docUrl;
+    ratio.current = scrollRatio(box.scrollTop, box.scrollHeight, box.clientHeight);
+    // restore は、ページを開いたときに決まる値. 変わっても、スクロールし直さない
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docUrl, html, anchor]);
+
+  useEffect(() => {
+    const box = ref.current?.parentElement;
+    if (!box) {
+      return;
+    }
+    const scrolled = () => {
+      ratio.current = scrollRatio(box.scrollTop, box.scrollHeight, box.clientHeight);
+      onScroll({ top: box.scrollTop, height: box.scrollHeight, view: box.clientHeight });
+    };
+    scrolled();
+    box.addEventListener("scroll", scrolled, { passive: true });
+    // 翻訳や画像で本文の長さが変わったときも、全体の長さを数え直す
+    const observer = new ResizeObserver(scrolled);
+    observer.observe(box);
+    if (ref.current) {
+      observer.observe(ref.current);
+    }
+    return () => {
+      box.removeEventListener("scroll", scrolled);
+      observer.disconnect();
+    };
+  }, [onScroll]);
 
   const click = (event: MouseEvent<HTMLElement>) => {
     const link = (event.target as Element).closest("a[href]");
