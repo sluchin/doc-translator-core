@@ -19,6 +19,7 @@ const HOME_URL = `https://${HOST}/latest/index.html`;
 const PROFILE: SiteProfile = {
   name: "Test Doc",
   host: HOST,
+  pathPrefix: "/latest/",
   homeUrl: HOME_URL,
   contentSelectors: ['[role="main"]', "main"],
   removeSelectors: [".rst-versions"],
@@ -45,12 +46,13 @@ const fake = async (texts: string[]): Promise<string[]> => texts.map((text) => `
 
 describe("docUrl", () => {
   it("accepts only https pages of the documentation host", () => {
-    expect(isDocUrl(HOME_URL, HOST)).toBe(true);
-    expect(isDocUrl(`https://${HOST}/latest/a.html#x`, HOST)).toBe(true);
-    expect(isDocUrl(`http://${HOST}/`, HOST)).toBe(false);
-    expect(isDocUrl("https://evil.example.com/", HOST)).toBe(false);
-    expect(isDocUrl(`https://${HOST}.evil.example.com/`, HOST)).toBe(false);
-    expect(isDocUrl("not a url", HOST)).toBe(false);
+    expect(isDocUrl(HOME_URL, PROFILE)).toBe(true);
+    expect(isDocUrl(`https://${HOST}/latest/a.html#x`, PROFILE)).toBe(true);
+    expect(isDocUrl(`http://${HOST}/`, PROFILE)).toBe(false);
+    expect(isDocUrl("https://evil.example.com/", PROFILE)).toBe(false);
+    expect(isDocUrl(`https://${HOST}.evil.example.com/`, PROFILE)).toBe(false);
+    expect(isDocUrl("not a url", PROFILE)).toBe(false);
+    expect(isDocUrl(`https://${HOST}/api/a.html`, PROFILE)).toBe(false);
   });
 
   it("removes and reads the fragment", () => {

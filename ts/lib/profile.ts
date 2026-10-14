@@ -10,6 +10,8 @@ export interface SiteProfile {
   readonly name: string;
   /** アプリの中で開く, ドキュメントのホスト (Rust 側の設定と同じにする). */
   readonly host: string;
+  /** アプリの中で開く, ページのパスの先頭 (`/` なら, ホストの全てのページ. 例: `/docs/`). */
+  readonly pathPrefix: string;
   /** 最初に開くページ. */
   readonly homeUrl: string;
   /** 本文の要素の CSS セレクタ (最初に見つかったものを使う. なければ body). */

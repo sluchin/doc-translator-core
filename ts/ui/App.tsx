@@ -35,7 +35,7 @@ export default function App({ profile }: Props) {
 
   const submit = () => {
     const value = (address ?? viewer.url).trim();
-    if (isDocUrl(value, profile.host)) {
+    if (isDocUrl(value, profile)) {
       viewer.open(value);
       setAddress(undefined);
     }
@@ -97,7 +97,7 @@ export default function App({ profile }: Props) {
       )}
       <main className="content">
         <Doc
-          host={profile.host}
+          site={profile}
           url={viewer.url}
           html={viewer.html}
           anchor={viewer.anchor}

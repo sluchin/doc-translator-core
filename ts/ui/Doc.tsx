@@ -7,11 +7,12 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { type MouseEvent, useEffect, useRef } from "react";
 import { isDocUrl, withoutHash } from "../lib/docUrl";
+import type { SiteProfile } from "../lib/profile";
 
 /** 本文の画面の引数. */
 interface Props {
-  /** ドキュメントのホスト. */
-  host: string;
+  /** サイトの設定 (ホストと, パスの先頭). */
+  site: SiteProfile;
   /** 今のページの URL. */
   url: string;
   /** 表示する本文の HTML (安全にしてある). */
@@ -28,7 +29,7 @@ interface Props {
  * @param props 引数
  * @returns 本文
  */
-export function Doc({ host, url, html, anchor, onOpen }: Props) {
+export function Doc({ site, url, html, anchor, onOpen }: Props) {
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -47,7 +48,7 @@ export function Doc({ host, url, html, anchor, onOpen }: Props) {
     }
     event.preventDefault();
     const href = link.getAttribute("href") as string;
-    if (isDocUrl(href, host)) {
+    if (isDocUrl(href, site)) {
       if (withoutHash(href) === withoutHash(url)) {
         const id = decodeURIComponent(new URL(href).hash.slice(1));
         ref.current?.querySelector(`[id="${CSS.escape(id)}"]`)?.scrollIntoView();

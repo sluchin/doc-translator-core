@@ -4,17 +4,23 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import type { SiteProfile } from "./profile";
+
 /**
  * URL が, アプリの中で開いてよい, ドキュメントのページかを確かめる.
  *
  * @param url URL
- * @param host ドキュメントのホスト
- * @returns https で, ホストが一致するなら true
+ * @param site サイトの設定 (ホストと, パスの先頭)
+ * @returns https で, ホストが一致して, パスが先頭に合うなら true
  */
-export function isDocUrl(url: string, host: string): boolean {
+export function isDocUrl(url: string, site: Pick<SiteProfile, "host" | "pathPrefix">): boolean {
   try {
     const parsed = new URL(url);
-    return parsed.protocol === "https:" && parsed.hostname === host;
+    return (
+      parsed.protocol === "https:" &&
+      parsed.hostname === site.host &&
+      parsed.pathname.startsWith(site.pathPrefix)
+    );
   } catch {
     return false;
   }
