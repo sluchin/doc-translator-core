@@ -19,7 +19,15 @@ import {
 } from "./menu";
 import { sanitize } from "./sanitize";
 import { collectSegments, keepsStructure, markAtomic } from "./segments";
-import { AbortedError, MAX_CHARS, MAX_ITEMS, chunk, translatePage } from "./translatePage";
+import {
+  AbortedError,
+  DEFAULT_LIMITS,
+  MAX_CHARS,
+  MAX_ITEMS,
+  MLKIT_LIMITS,
+  chunk,
+  translatePage,
+} from "./translatePage";
 
 /** テスト用のサイトの設定 (Sphinx 風のページ). */
 const HOST = "docs.example.com";
@@ -257,6 +265,9 @@ describe("chunk", () => {
     expect(chunk([big, "a", "b"])).toEqual([[big], ["a", "b"]]);
     expect(chunk(["a", big])).toEqual([["a"], [big]]);
     expect(chunk([])).toEqual([]);
+    expect(DEFAULT_LIMITS).toEqual({ items: MAX_ITEMS, chars: MAX_CHARS });
+    const small = Array.from({ length: 25 }, (_, i) => `t${i}`);
+    expect(chunk(small, MLKIT_LIMITS).map((part) => part.length)).toEqual([10, 10, 5]);
   });
 });
 

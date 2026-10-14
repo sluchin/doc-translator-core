@@ -21,6 +21,8 @@ import {
 } from "../lib/history";
 import {
   AbortedError,
+  DEFAULT_LIMITS,
+  MLKIT_LIMITS,
   type Progress,
   type TranslatedPage,
   translatePage,
@@ -127,7 +129,16 @@ export function useViewer(profile: SiteProfile): Viewer {
         }
         setLoading(false);
         if (language === "ja" && !found.translated) {
-          const translated = await translatePage(found.page, api.translate, setProgress, signal);
+          // 端末の中で翻訳する (ML Kit) ときは、小さい単位で依頼して、経過をこまめに進める
+          const { provider } = await api.getSettings();
+          const limits = provider === "mlkit" ? MLKIT_LIMITS : DEFAULT_LIMITS;
+          const translated = await translatePage(
+            found.page,
+            api.translate,
+            setProgress,
+            signal,
+            limits,
+          );
           found.translated = translated;
           if (!signal.aborted) {
             setEntry({ ...found });

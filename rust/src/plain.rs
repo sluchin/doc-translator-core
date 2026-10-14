@@ -232,6 +232,60 @@ fn pieces(html: &str) -> Vec<Piece> {
     out
 }
 
+/// ML Kit に 1 回で渡す文章の長さの上限 (文字数). 長い文章は、遅くなる (止まったように見える) ので、
+/// 文の切れ目で分けて、順に翻訳する.
+const MAX_CHUNK: usize = 400;
+
+/// 文章を、文の切れ目 (`.` `!` `?` `。` の後の空白) で、上限の長さ以下のまとまりに分ける.
+///
+/// 1 つの文が、上限より長いときは、単語の切れ目で分ける. 前後の空白は、取り除く.
+fn split_sentences(text: &str, max: usize) -> Vec<String> {
+    let mut sentences: Vec<&str> = Vec::new();
+    let mut start = 0;
+    let mut chars = text.char_indices().peekable();
+    while let Some((index, ch)) = chars.next() {
+        let ends = matches!(ch, '.' | '!' | '?' | '。')
+            && chars.peek().is_none_or(|(_, next)| next.is_whitespace());
+        if ends {
+            sentences.push(&text[start..index + ch.len_utf8()]);
+            start = index + ch.len_utf8();
+        }
+    }
+    sentences.push(&text[start..]);
+
+    let mut chunks: Vec<String> = Vec::new();
+    for sentence in sentences.iter().map(|s| s.trim()).filter(|s| !s.is_empty()) {
+        match chunks.last_mut() {
+            Some(last) if last.chars().count() + 1 + sentence.chars().count() <= max => {
+                last.push(' ');
+                last.push_str(sentence);
+            }
+            _ => chunks.push(sentence.to_string()),
+        }
+    }
+
+    chunks
+        .into_iter()
+        .flat_map(|chunk| split_words(&chunk, max))
+        .collect()
+}
+
+/// 上限より長いまとまりを、単語の切れ目で分ける (空白がなければ、そのまま).
+fn split_words(text: &str, max: usize) -> Vec<String> {
+    let mut parts: Vec<String> = Vec::new();
+    for word in text.split(' ') {
+        match parts.last_mut() {
+            Some(last) if last.chars().count() + 1 + word.chars().count() <= max => {
+                last.push(' ');
+                last.push_str(word);
+            }
+            _ => parts.push(word.to_string()),
+        }
+    }
+
+    parts
+}
+
 /// 目印の正規表現 (ブラケットは、全角や隅付きに変わることがある).
 fn marker() -> Regex {
     Regex::new(r"[\[［【]{2}\s*(\d+)\s*[\]］】]{2}").expect("the pattern is valid")
@@ -312,6 +366,38 @@ impl<P: PlainTranslator> PlainBackend<P> {
     pub fn new(plain: P) -> Self {
         Self { plain }
     }
+
+    /// 長い文章を、文の切れ目で分けて、まとめて翻訳して、つなぎ直す (前後の空白は、残す).
+    async fn translate_split(&self, texts: &[String]) -> Result<Vec<String>, String> {
+        let split: Vec<Vec<String>> = texts
+            .iter()
+            .map(|text| split_sentences(text, MAX_CHUNK))
+            .collect();
+        let flat: Vec<String> = split.iter().flatten().cloned().collect();
+        let mut translated = if flat.is_empty() {
+            Vec::new()
+        } else {
+            self.plain.translate_plain(&flat).await?
+        };
+        if translated.len() != flat.len() {
+            return Err("ML Kit returned a different number of texts".to_string());
+        }
+        translated.reverse();
+
+        Ok(texts
+            .iter()
+            .zip(&split)
+            .map(|(text, chunks)| {
+                let joined: Vec<String> = chunks
+                    .iter()
+                    .map(|_| translated.pop().unwrap_or_default())
+                    .collect();
+                let lead = &text[..text.len() - text.trim_start().len()];
+                let trail = &text[text.trim_end().len()..];
+                format!("{lead}{}{trail}", joined.join(" "))
+            })
+            .collect())
+    }
 }
 
 impl<P: PlainTranslator + Sync> Backend for PlainBackend<P> {
@@ -331,10 +417,7 @@ impl<P: PlainTranslator + Sync> Backend for PlainBackend<P> {
                 })
                 .collect();
             let templates: Vec<String> = targets.iter().map(|&i| to_template(&parts[i])).collect();
-            let first = self.plain.translate_plain(&templates).await?;
-            if first.len() != templates.len() {
-                return Err("ML Kit returned a different number of texts".to_string());
-            }
+            let first = self.translate_split(&templates).await?;
             let mut results: Vec<Option<String>> = vec![None; parts.len()];
             let mut retry = Vec::new();
             for (&i, translated) in targets.iter().zip(&first) {
@@ -352,14 +435,7 @@ impl<P: PlainTranslator + Sync> Backend for PlainBackend<P> {
                     _ => None,
                 })
                 .collect();
-            let mut second = if singles.is_empty() {
-                Vec::new()
-            } else {
-                self.plain.translate_plain(&singles).await?
-            };
-            if second.len() != singles.len() {
-                return Err("ML Kit returned a different number of texts".to_string());
-            }
+            let mut second = self.translate_split(&singles).await?;
             second.reverse();
             let mut iterator = std::iter::from_fn(move || second.pop());
             for &i in &retry {
@@ -539,5 +615,47 @@ mod tests {
             .await
             .unwrap_err();
         assert!(error.contains("different number"));
+    }
+
+    #[test]
+    fn splits_long_text_at_the_sentence_boundaries() {
+        assert_eq!(split_sentences("Short one.", 400), vec!["Short one."]);
+        assert_eq!(
+            split_sentences("Aaa. Bbb! Ccc? 3.5 is a number. End", 12),
+            vec!["Aaa. Bbb!", "Ccc?", "3.5 is a", "number.", "End"]
+        );
+        assert_eq!(split_sentences("  ", 10), Vec::<String>::new());
+        assert_eq!(
+            split_sentences("Pack. Them. Together.", 400),
+            vec!["Pack. Them. Together."]
+        );
+    }
+
+    #[test]
+    fn splits_a_long_sentence_at_the_words() {
+        assert_eq!(
+            split_sentences("one two three four five six", 9),
+            vec!["one two", "three", "four five", "six"]
+        );
+        assert_eq!(
+            split_sentences("unbroken_word_longer_than_max", 5),
+            vec!["unbroken_word_longer_than_max"]
+        );
+    }
+
+    #[tokio::test]
+    async fn translates_the_chunks_of_a_long_text_in_one_call_and_joins_them() {
+        let long = format!("{} {}", "A".repeat(300), "B".repeat(300));
+        let fake = Fake::new(|t| format!("<{}>", t.len()));
+        let backend = PlainBackend::new(fake);
+        let result = backend
+            .translate(&strings(&[&format!(" {long}.")]))
+            .await
+            .unwrap();
+
+        assert_eq!(result, vec![" &lt;300&gt; &lt;301&gt;".to_string()]);
+        let calls = backend.plain.calls.lock().unwrap();
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].len(), 2);
     }
 }
