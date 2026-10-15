@@ -147,6 +147,28 @@ describe("extractPage", () => {
   });
 });
 
+describe("extractPage with dropCodeLines", () => {
+  const profile = { ...PROFILE, dropCodeLines: /^\s*\/\/sample(Start|End)\s*$/ };
+  const html = `<html><body><main>
+<div class="code-block">
+fun main() {
+//sampleStart
+    println("x")
+//sampleEnd
+}
+</div><pre><span>//sampleStart</span></pre></main></body></html>`;
+
+  it("drops the marker lines of the plain code and trims the edges", () => {
+    const text = extractPage(html, "https://a/", profile).html;
+    expect(text).toContain('<div class="code-block">fun main() {\n    println("x")\n}</div>');
+  });
+
+  it("keeps the highlighted code and the code of a profile without the option", () => {
+    expect(extractPage(html, "https://a/", profile).html).toContain("<span>//sampleStart</span>");
+    expect(extractPage(html, "https://a/", PROFILE).html).toContain("//sampleEnd");
+  });
+});
+
 describe("menu", () => {
   const page = extractPage(PAGE, "https://docs.example.com/latest/topic/index.html", PROFILE);
 

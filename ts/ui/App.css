@@ -236,6 +236,7 @@ input {
 }
 
 .doc pre,
+.doc .code-block,
 .doc code,
 .doc kbd,
 .doc samp {
@@ -251,13 +252,19 @@ input {
   padding: 0.1em 0.3em;
 }
 
-.doc pre {
+/* .code-block: Kotlin のドキュメントのコードは、pre ではなく、改行つきの文字を持つ div (サイトの JavaScript が整形する) */
+.doc pre,
+.doc .code-block {
   background: var(--code-bg);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 12px;
   overflow-x: auto;
   line-height: 1.45;
+}
+
+.doc .code-block {
+  white-space: pre;
 }
 
 .doc pre code {

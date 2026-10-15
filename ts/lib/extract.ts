@@ -52,6 +52,19 @@ export function extractPage(html: string, url: string, profile: SiteProfile): Do
   content.querySelectorAll("img[src]").forEach((img) => {
     img.setAttribute("src", absoluteUrl(img.getAttribute("src") as string, url));
   });
+  const { dropCodeLines } = profile;
+  if (dropCodeLines) {
+    content.querySelectorAll("pre, .code-block").forEach((code) => {
+      if (code.children.length === 0) {
+        // 色づけのない、文字だけのコードだけを直す (色づけの要素は、壊さない)
+        const lines = (code.textContent as string).split("\n");
+        code.textContent = lines
+          .filter((line) => !dropCodeLines.test(line))
+          .join("\n")
+          .replace(/^\n+|\s+$/g, "");
+      }
+    });
+  }
   const heading = content.querySelector("h1")?.textContent ?? "";
   const title = doc.title.replace(profile.titleSuffix, "").trim() || heading;
 
