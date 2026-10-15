@@ -1,5 +1,5 @@
 # 共通のライブラリの検査. アプリ (zephyr-doc, kotlin-doc) も, 同じ開発用のイメージ (docker/Dockerfile) を使う.
-# コンテナは, ホストのユーザーで実行する. UID と GID は, シェルでエクスポートしておく
+# コンテナはホストのユーザーで実行する. UID と GID はシェルでエクスポートしておく
 x-common: &common
   build:
     context: docker

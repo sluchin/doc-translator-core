@@ -1,11 +1,11 @@
 name: CI
 
-# 開発環境 (Dockerfile) と同じイメージで, docker compose のサービスを実行する.
+# 開発環境 (Dockerfile) と同じイメージで docker compose のサービスを実行する.
 #   test    : TypeScript (Vitest) と Rust の単体テスト
 #   coverage: ts/lib の行と分岐のカバレッジが 100% であること
 #   format  : 整形の確認 (Prettier, rustfmt)
 #   analyze : 型の検査, ESLint, Clippy
-#   cleanup : 3 日より前の実行 (ログと artifact) を, push のたびに削除する
+#   cleanup : 3 日より前の実行 (ログと artifact) を push のたびに削除する
 
 on:
   push:

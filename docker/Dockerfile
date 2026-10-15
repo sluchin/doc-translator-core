@@ -1,4 +1,4 @@
-# 開発用のイメージ (dev). PC (Linux) の Tauri アプリと, Android の APK を, どちらもビルドできる.
+# 開発用のイメージ (dev). PC (Linux) の Tauri アプリと Android の APK をどちらもビルドできる.
 FROM ubuntu:24.04 AS dev
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -30,7 +30,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y --no-install-recommends nodejs && \
     rm -rf /var/lib/apt/lists/*
 
-# Rust (ツールチェインは読み取り専用. cargo のキャッシュは, ボリュームの /cargo-home)
+# Rust (ツールチェインは読み取り専用. cargo のキャッシュはボリュームの /cargo-home)
 ENV RUSTUP_HOME=/usr/local/rustup
 ENV CARGO_HOME=/cargo-home
 ENV PATH=/usr/local/cargo/bin:${PATH}
