@@ -16,7 +16,7 @@ interface Props {
 }
 
 /**
- * 翻訳サービス (Google Cloud Translation, Gemini, ML Kit) と、API キーを設定する画面.
+ * 翻訳サービス (無料の Google 翻訳, Google Cloud Translation, Gemini, ML Kit) と、API キーを設定する画面.
  *
  * @param props 引数
  * @returns 画面
@@ -83,6 +83,14 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
           <label className="choice">
             <input
               type="radio"
+              checked={provider === "googlefree"}
+              onChange={() => setProvider("googlefree")}
+            />
+            Google 翻訳（無料。キー不要・非公式）
+          </label>
+          <label className="choice">
+            <input
+              type="radio"
               checked={provider === "google"}
               onChange={() => setProvider("google")}
             />
@@ -135,6 +143,13 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
               <input value={model} spellCheck={false} onChange={(e) => setModel(e.target.value)} />
             </label>
           </>
+        )}
+        {provider === "googlefree" && (
+          <p>
+            キーは要りません。Google の Web の翻訳と同じ入口を使います（公式の API
+            ではありません）。仕様が変わったり、短い時間に多く送ると、断られたりすることがあります。個人が読むために使ってください。文章は、Google
+            に送られます。
+          </p>
         )}
         {provider === "mlkit" && (
           <p>

@@ -7,10 +7,11 @@
 //! ページの取得と翻訳の依頼 (API キーを使う通信) を受け持つ. HTML の解析と表示は, フロントエンド.
 //! アプリ (zephyr-doc, kotlin-doc) は, [`builder`] に, サイトの設定 [`Site`] を渡して使う.
 
-mod docs;
-mod plain;
-mod settings;
-mod translate;
+pub mod docs;
+pub mod free;
+pub mod plain;
+pub mod settings;
+pub mod translate;
 
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -18,6 +19,7 @@ use std::sync::Mutex;
 use tauri::{Manager, State};
 
 pub use docs::Site;
+use free::GoogleFree;
 use plain::{PlainBackend, PlainTranslator};
 use settings::{Provider, Settings, Update, View};
 use translate::{Backend, Cache, GeminiBackend, GoogleBackend};
@@ -111,6 +113,15 @@ async fn translate(
                 &state,
                 provider,
                 &GeminiBackend::new(client, key, model),
+                &texts,
+            )
+            .await?
+        }
+        Provider::Googlefree => {
+            translate_with(
+                &state,
+                provider,
+                &PlainBackend::new(GoogleFree::new(client)),
                 &texts,
             )
             .await?

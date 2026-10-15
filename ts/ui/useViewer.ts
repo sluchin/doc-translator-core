@@ -215,9 +215,10 @@ export function useViewer(profile: SiteProfile): Viewer {
         }
         setLoading(false);
         if (language === "ja" && !found.translated) {
-          // 端末の中で翻訳する (ML Kit) ときは、小さい単位で依頼して、経過をこまめに進める
+          // 1 つずつ翻訳する (ML Kit と無料の Google 翻訳) ときは、小さい単位で依頼して、経過をこまめに進める
           const { provider } = await api.getSettings();
-          const limits = provider === "mlkit" ? MLKIT_LIMITS : DEFAULT_LIMITS;
+          const limits =
+            provider === "google" || provider === "gemini" ? DEFAULT_LIMITS : MLKIT_LIMITS;
           const translated = await translatePage(
             found.page,
             api.translate,

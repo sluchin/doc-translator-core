@@ -1,0 +1,58 @@
+// Copyright (c) 2026 Tetsuya Higashi
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+//! ページの取得 (`docs.rs`)の単体テスト (本番のソースとは、分けて置く).
+
+use doc_translator_core::docs::*;
+
+const HOST: &str = "docs.example.com";
+
+#[test]
+fn accepts_only_https_pages_of_the_documentation_host() {
+    assert!(is_doc_url(
+        HOST,
+        "https://docs.example.com/latest/index.html#a"
+    ));
+    assert!(!is_doc_url(HOST, "http://docs.example.com/"));
+    assert!(!is_doc_url(HOST, "https://docs.example.com.evil.example/"));
+    assert!(!is_doc_url(HOST, "https://evil.example/docs.example.com"));
+    assert!(!is_doc_url(HOST, "file:///etc/passwd"));
+    assert!(!is_doc_url(HOST, "not a url"));
+}
+
+#[test]
+fn checks_the_response() {
+    let html = Kind::Html;
+    assert!(check_response(200, Some("text/html; charset=utf-8"), Some(10), html).is_ok());
+    assert!(check_response(200, Some("text/html"), None, html).is_ok());
+    assert_eq!(
+        check_response(404, Some("text/html"), None, html),
+        Err("HTTP 404".to_string())
+    );
+    assert!(check_response(200, Some("image/png"), None, html).is_err());
+    assert!(check_response(200, Some("application/json"), None, html).is_err());
+    assert!(check_response(200, None, None, html).is_err());
+    assert!(check_response(200, Some("text/html"), Some(MAX_BYTES as u64 + 1), html).is_err());
+}
+
+#[test]
+fn accepts_json_only_for_the_json_kind() {
+    let json = Kind::Json;
+    assert!(check_response(200, Some("application/json; charset=utf-8"), None, json).is_ok());
+    assert!(check_response(200, Some("text/plain"), None, json).is_ok());
+    assert!(check_response(200, Some("text/html"), None, json).is_err());
+}
+
+#[tokio::test]
+async fn refuses_other_hosts_without_a_request() {
+    let site = Site {
+        host: HOST,
+        user_agent: "test/0.1",
+    };
+    let client = build_client(site).unwrap();
+    let error = fetch_page(&client, HOST, "https://example.com/")
+        .await
+        .unwrap_err();
+    assert!(error.starts_with("Not a documentation page"));
+}

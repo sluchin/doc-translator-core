@@ -23,6 +23,7 @@
 - Prettier と rustfmt に従う。ESLint と Clippy の警告をゼロにする。
 - ファイルの先頭に、著作権とライセンス (`Copyright (c) 2026 Tetsuya Higashi`、`SPDX-License-Identifier: GPL-3.0-or-later`) を書く。
 - コメントは日本語。句読点は「, 」と「.」。ログとエラーのメッセージ、識別子は英語。関数には、TSDoc / rustdoc を付ける。
+- **Rust のテストは、`rust/tests/` に、ファイルを分けて置く** (本番のソースの中に、`#[cfg(test)] mod tests` を書かない)。テストが呼ぶ関数と型は、`pub` にする (モジュールも、`lib.rs` で `pub mod`)。
 - `!` (非 null の表明) と、テスト以外の `unwrap()` を使わない。
 
 ## コミットガイドライン

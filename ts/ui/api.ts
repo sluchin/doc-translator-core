@@ -49,7 +49,7 @@ export function translate(texts: string[]): Promise<string[]> {
 }
 
 /** 翻訳に使うサービス. */
-export type Provider = "google" | "gemini" | "mlkit";
+export type Provider = "google" | "gemini" | "mlkit" | "googlefree";
 
 /** 設定 (API キーそのものは、含まれない). */
 export interface SettingsView {
