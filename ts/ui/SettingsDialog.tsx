@@ -28,6 +28,7 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
   const [geminiKey, setGeminiKey] = useState("");
   const [model, setModel] = useState("");
   const [message, setMessage] = useState<string>();
+  const [notice, setNotice] = useState<string>();
   const [checking, setChecking] = useState(false);
   const [checkResult, setCheckResult] = useState<string>();
 
@@ -40,6 +41,7 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
   }, []);
 
   const save = async (clear?: "google" | "gemini") => {
+    setNotice(undefined);
     try {
       const saved = await api.setSettings({
         provider,
@@ -51,6 +53,7 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
       setGoogleKey("");
       setGeminiKey("");
       setMessage(undefined);
+      setNotice(clear === undefined ? "保存しました。" : "キーを消しました。");
       onSaved();
     } catch (e) {
       setMessage(String(e));
@@ -169,6 +172,11 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
           キーは、この端末のアプリ専用の場所に保存して、翻訳の依頼だけに使います。
         </p>
         {message && <p className="error">{message}</p>}
+        {notice && (
+          <p className="hint" role="status">
+            {notice}
+          </p>
+        )}
         <div className="actions">
           {provider === "google" && view.hasGoogleKey && (
             <button onClick={() => void save("google")}>キーを消す</button>
