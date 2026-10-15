@@ -93,11 +93,15 @@ export function chunk(texts: string[], limits: Limits = DEFAULT_LIMITS): string[
  * 段落などの単位ごとに, 文中のコードに「翻訳しない」印を付けて翻訳に渡す. 同じ文章は 1 回だけ
  * 渡す. 翻訳の結果で、コードの印やリンクの数が変わったものは, 英語のまま残す.
  *
+ * 上から順に翻訳し, 1 回の依頼が終わるたびに, そこまでの翻訳を `onPartial` に渡す (まだ翻訳していない
+ * 文章は, 英語のまま). 全部が終わるのを待たずに, 先に翻訳した上のほうから読める.
+ *
  * @param page 取り出したページ
  * @param translate 翻訳する関数
  * @param onProgress 経過を受け取る関数
  * @param signal 中止の指示 (aborted が true になったら, 次の依頼の前にやめる)
  * @param limits 1 回の依頼の大きさの上限
+ * @param onPartial 途中までの翻訳を受け取る関数 (最後の依頼のあとは, 呼ばない. 戻り値が完成した翻訳)
  * @returns 翻訳したページ
  * @throws AbortedError 中止されたとき
  */
@@ -107,6 +111,7 @@ export async function translatePage(
   onProgress: (progress: Progress) => void = () => undefined,
   signal: { aborted: boolean } = { aborted: false },
   limits: Limits = DEFAULT_LIMITS,
+  onPartial: (partial: TranslatedPage) => void = () => undefined,
 ): Promise<TranslatedPage> {
   const container = document.createElement("div");
   container.innerHTML = page.html;
@@ -114,31 +119,44 @@ export async function translatePage(
   const sources = segments.map(markAtomic);
   const unique = [...new Set([page.title, ...sources])];
   const translations = new Map<string, string>();
+  const applied = new Set<number>();
+  let kept = 0;
   let done = 0;
 
-  for (const part of chunk(unique, limits)) {
+  /** 翻訳が届いた文章を, 本文に差し込む (差し込み済みのものは, 飛ばす). */
+  const apply = (): TranslatedPage => {
+    segments.forEach((segment, index) => {
+      const translated = translations.get(sources[index]);
+      if (translated === undefined || applied.has(index)) {
+        return;
+      }
+      applied.add(index);
+      if (keepsStructure(sources[index], translated)) {
+        segment.innerHTML = sanitize(translated);
+      } else {
+        kept += 1;
+      }
+    });
+    return {
+      title: translations.get(page.title) as string,
+      html: sanitize(container.innerHTML),
+      kept,
+    };
+  };
+
+  const parts = chunk(unique, limits);
+  for (const [index, part] of parts.entries()) {
     if (signal.aborted) {
       throw new AbortedError();
     }
     const results = await translate(part);
-    part.forEach((text, index) => translations.set(text, results[index] ?? text));
+    part.forEach((text, at) => translations.set(text, results[at] ?? text));
     done += part.length;
     onProgress({ done, total: unique.length });
+    if (index < parts.length - 1) {
+      onPartial(apply());
+    }
   }
 
-  let kept = 0;
-  segments.forEach((segment, index) => {
-    const translated = translations.get(sources[index]) as string;
-    if (keepsStructure(sources[index], translated)) {
-      segment.innerHTML = sanitize(translated);
-    } else {
-      kept += 1;
-    }
-  });
-
-  return {
-    title: translations.get(page.title) as string,
-    html: sanitize(container.innerHTML),
-    kept,
-  };
+  return apply();
 }

@@ -104,14 +104,16 @@ async fn translate(
         (settings.provider, key, settings.gemini_model.clone())
     };
     let client = state.client.clone();
+    // キャッシュを分ける名前 (サービスと, Gemini のモデル)
+    let namespace = provider.namespace(&model);
     let (results, added) = match provider {
         Provider::Google => {
-            translate_with(&state, provider, &GoogleBackend::new(client, key), &texts).await?
+            translate_with(&state, &namespace, &GoogleBackend::new(client, key), &texts).await?
         }
         Provider::Gemini => {
             translate_with(
                 &state,
-                provider,
+                &namespace,
                 &GeminiBackend::new(client, key, model),
                 &texts,
             )
@@ -120,7 +122,7 @@ async fn translate(
         Provider::Googlefree => {
             translate_with(
                 &state,
-                provider,
+                &namespace,
                 &PlainBackend::new(GoogleFree::new(client)),
                 &texts,
             )
@@ -130,7 +132,13 @@ async fn translate(
             if !MLKIT_AVAILABLE {
                 return Err("ML Kit is available only on Android".to_string());
             }
-            translate_with(&state, provider, &PlainBackend::new(MlKit { app }), &texts).await?
+            translate_with(
+                &state,
+                &namespace,
+                &PlainBackend::new(MlKit { app }),
+                &texts,
+            )
+            .await?
         }
     };
     if added > 0 {
@@ -145,11 +153,11 @@ async fn translate(
 /// バックエンドとキャッシュで翻訳する.
 async fn translate_with<B: Backend>(
     state: &State<'_, AppState>,
-    provider: Provider,
+    namespace: &str,
     backend: &B,
     texts: &[String],
 ) -> Result<(Vec<String>, usize), String> {
-    translate::translate_with_cache(&state.cache, backend, provider.name(), texts).await
+    translate::translate_with_cache(&state.cache, backend, namespace, texts).await
 }
 
 /// 設定を返す (API キーそのものは、画面に返さない).

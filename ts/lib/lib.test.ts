@@ -334,6 +334,31 @@ describe("translatePage", () => {
     expect(result.html).not.toContain("onerror");
   });
 
+  it("passes the partial translation after each request except the last", async () => {
+    const many = {
+      ...page,
+      html: Array.from({ length: 50 }, (_, i) => `<p>Para ${i}</p>`).join(""),
+    };
+    const partials: { title: string; html: string }[] = [];
+    const result = await translatePage(
+      many,
+      fake,
+      () => undefined,
+      { aborted: false },
+      { items: 20, chars: 8000 },
+      (partial) => partials.push(partial),
+    );
+    // 51 個 (タイトルと 50 の段落) を 20 個ずつ: 3 回の依頼で, 途中は 2 回
+    expect(partials).toHaveLength(2);
+    expect(partials[0].title).toBe("JA(Sample Topic)");
+    expect(partials[0].html).toContain("JA(Para 0)");
+    expect(partials[0].html).toContain("<p>Para 49</p>");
+    expect(partials[1].html).toContain("JA(Para 38)");
+    expect(partials[1].html).toContain("<p>Para 49</p>");
+    expect(result.html).toContain("JA(Para 49)");
+    expect(result.html).not.toContain("<p>Para 49</p>");
+  });
+
   it("stops when it is aborted", async () => {
     const signal = { aborted: false };
     const abortAfterFirst = async (texts: string[]) => {

@@ -42,6 +42,16 @@ impl Provider {
     }
 }
 
+impl Provider {
+    /// 翻訳のキャッシュを分ける名前 (Gemini は, モデルが違えば、翻訳も違うので、モデルの名前も入れる).
+    pub fn namespace(self, gemini_model: &str) -> String {
+        match self {
+            Provider::Gemini => format!("{}:{}", self.name(), gemini_model),
+            _ => self.name().to_string(),
+        }
+    }
+}
+
 /// 設定.
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]

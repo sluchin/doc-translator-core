@@ -46,7 +46,10 @@ export type Lang = "ja" | "en";
 /** 開いたページと、その翻訳. */
 interface Entry {
   page: DocPage;
+  /** 全部を翻訳したもの. */
   translated?: TranslatedPage;
+  /** 翻訳の途中 (上から翻訳した分. 翻訳がまだ終わらないうちに、先に表示する). */
+  partial?: TranslatedPage;
 }
 
 /** 覚えておくページの数 (多いものから、古い順に捨てる). */
@@ -126,7 +129,7 @@ export interface Viewer {
   removeBookmark: (url: string) => void;
   /** 言語を切り替える. */
   toggleLang: () => void;
-  /** 翻訳をやり直す (API キーを設定したあとなど). */
+  /** 翻訳をやり直す (翻訳サービスや API キーを変えたあとなど. 覚えていた翻訳は、捨てる). */
   retry: () => void;
 }
 
@@ -215,6 +218,7 @@ export function useViewer(profile: SiteProfile): Viewer {
         }
         setLoading(false);
         if (language === "ja" && !found.translated) {
+          found.partial = undefined;
           // 1 つずつ翻訳する (ML Kit と無料の Google 翻訳) ときは、小さい単位で依頼して、経過をこまめに進める
           const { provider } = await api.getSettings();
           const limits =
@@ -225,8 +229,16 @@ export function useViewer(profile: SiteProfile): Viewer {
             setProgress,
             signal,
             limits,
+            (partial) => {
+              // 先に翻訳した上のほうから、表示する
+              if (!signal.aborted) {
+                found.partial = partial;
+                setEntry({ ...found });
+              }
+            },
           );
           found.translated = translated;
+          found.partial = undefined;
           if (!signal.aborted) {
             setEntry({ ...found });
           }
@@ -316,25 +328,24 @@ export function useViewer(profile: SiteProfile): Viewer {
   );
 
   const url = current(nav) ?? profile.homeUrl;
-  const title = (lang === "ja" && entry?.translated?.title) || entry?.page.title || url;
+  const translation = lang === "ja" ? (entry?.translated ?? entry?.partial) : undefined;
+  const title = (lang === "ja" && translation?.title) || entry?.page.title || url;
   const changeBookmarks = (next: readonly Bookmark[]) => {
     persist({ ...savedRef.current, bookmarks: next });
     setBookmarks(next);
   };
   const menu = profile.menu?.type === "json" ? jsonMenu : htmlMenu;
 
-  const showTranslation = lang === "ja" && entry?.translated;
-
   return {
-    title: (showTranslation ? entry.translated?.title : entry?.page.title) ?? "",
-    html: (showTranslation ? entry.translated?.html : entry?.page.html) ?? "",
+    title: (translation ? translation.title : entry?.page.title) ?? "",
+    html: (translation ? translation.html : entry?.page.html) ?? "",
     url,
     lang,
     loading,
     progress,
     error,
     needsKey,
-    kept: showTranslation ? (entry.translated?.kept ?? 0) : 0,
+    kept: translation?.kept ?? 0,
     anchor,
     menu,
     docUrl,
@@ -354,6 +365,14 @@ export function useViewer(profile: SiteProfile): Viewer {
     toggleBookmark: () => changeBookmarks(toggleBookmark(bookmarks, withoutHash(url), title)),
     removeBookmark: (target) => changeBookmarks(bookmarks.filter((b) => b.url !== target)),
     toggleLang,
-    retry: () => void show(current(nav) as string, lang),
+    retry: () => {
+      // 翻訳サービスや API キーを変えたので、覚えていた翻訳を捨てて、今のサービスで翻訳し直す
+      // (サービスごとのキャッシュがあるので、前に翻訳した文章は、すぐに出る)
+      cache.current.forEach((found) => {
+        found.translated = undefined;
+        found.partial = undefined;
+      });
+      void show(current(nav) as string, lang);
+    },
   };
 }
