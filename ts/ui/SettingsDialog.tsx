@@ -66,6 +66,31 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
     }
   };
 
+  const [cacheMessage, setCacheMessage] = useState<string>();
+  const [moving, setMoving] = useState(false);
+
+  /** キャッシュを書き出す、または、読み込む (画面を開いている間は、ボタンを押せない). */
+  const moveCache = async (kind: "export" | "import") => {
+    setMoving(true);
+    setCacheMessage(undefined);
+    try {
+      if (kind === "export") {
+        setCacheMessage((await api.exportCache()) ? "書き出しました。" : undefined);
+      } else {
+        const added = await api.importCache();
+        setCacheMessage(added === null ? undefined : `読み込みました (新しい翻訳 ${added} 件)。`);
+        if (added !== null && added > 0) {
+          // 開いているページに、読み込んだ翻訳を使う
+          onSaved();
+        }
+      }
+    } catch (e) {
+      setCacheMessage(`失敗しました: ${String(e)}`);
+    } finally {
+      setMoving(false);
+    }
+  };
+
   const check = async () => {
     setChecking(true);
     setCheckResult(undefined);
@@ -189,6 +214,26 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
         <p className="hint">
           キーは、この端末のアプリ専用の場所に保存して、翻訳の依頼だけに使います。
         </p>
+        <fieldset>
+          <legend>翻訳のキャッシュ</legend>
+          <p className="hint">
+            書き出したファイルを Google Drive
+            などに保存して、別の端末で読み込むと、翻訳を引き継げます（その端末の翻訳に足し合わせます）。
+          </p>
+          <div className="actions">
+            <button onClick={() => void moveCache("export")} disabled={moving}>
+              書き出す
+            </button>
+            <button onClick={() => void moveCache("import")} disabled={moving}>
+              読み込む
+            </button>
+          </div>
+          {cacheMessage && (
+            <p className="hint" role="status">
+              {cacheMessage}
+            </p>
+          )}
+        </fieldset>
         {message && <p className="error">{message}</p>}
         {notice && (
           <p className="hint" role="status">

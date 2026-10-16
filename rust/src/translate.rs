@@ -124,6 +124,24 @@ impl Cache {
         cache
     }
 
+    /// 書き出したキャッシュ (JSON) を, 足し合わせる (端末にある翻訳は, そのまま残す).
+    ///
+    /// 返すのは, 新しく足した数. JSON として読めなければ, 何も変えずに失敗する.
+    pub fn merge_json(&mut self, text: &str) -> Result<usize, String> {
+        let entries: Vec<Entry> = serde_json::from_str(text)
+            .map_err(|_| "The file is not a translation cache".to_string())?;
+        let mut added = 0;
+        for entry in entries {
+            if self.map.contains_key(&entry.key) {
+                continue;
+            }
+            self.insert(entry.key, entry.value);
+            added += 1;
+        }
+
+        Ok(added)
+    }
+
     /// 数.
     pub fn len(&self) -> usize {
         self.map.len()

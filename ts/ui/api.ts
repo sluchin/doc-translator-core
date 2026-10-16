@@ -111,3 +111,21 @@ export function getSettings(): Promise<SettingsView> {
 export function setSettings(update: SettingsUpdate): Promise<SettingsView> {
   return invoke<SettingsView>("set_settings", { update });
 }
+
+/**
+ * 翻訳のキャッシュを書き出す (保存の画面を開く. Android では、Google Drive も選べる).
+ *
+ * @returns 書き出したら true、やめたら false
+ */
+export function exportCache(): Promise<boolean> {
+  return invoke<boolean>("export_cache");
+}
+
+/**
+ * 書き出したキャッシュを読み込んで、端末のキャッシュに足し合わせる (選択の画面を開く).
+ *
+ * @returns 新しく足した翻訳の数 (選ぶのをやめたら null)
+ */
+export function importCache(): Promise<number | null> {
+  return invoke<number | null>("import_cache");
+}

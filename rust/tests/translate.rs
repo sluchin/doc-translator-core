@@ -146,6 +146,32 @@ fn makes_the_json_from_the_snapshot_in_the_old_order() {
 }
 
 #[test]
+fn merges_an_exported_cache_without_replacing_the_local_translations() {
+    let mut other = Cache::new(10);
+    other.insert("a".into(), "remote-a".into());
+    other.insert("b".into(), "remote-b".into());
+    let exported = other.to_json();
+
+    let mut local = Cache::new(10);
+    local.insert("a".into(), "local-a".into());
+    assert_eq!(local.merge_json(&exported).unwrap(), 1);
+    // 端末にある翻訳は、そのまま. ない翻訳だけを足す
+    assert_eq!(local.get("a").unwrap(), "local-a");
+    assert_eq!(local.get("b").unwrap(), "remote-b");
+    // もう一度読み込んでも、増えない
+    assert_eq!(local.merge_json(&exported).unwrap(), 0);
+    // キャッシュでないファイルは、何も変えずに失敗する
+    assert!(
+        local
+            .merge_json("not json")
+            .unwrap_err()
+            .contains("not a translation cache")
+    );
+    assert!(local.merge_json(r#"{"a":1}"#).is_err());
+    assert_eq!(local.len(), 2);
+}
+
+#[test]
 fn drops_the_oldest_and_round_trips_through_json() {
     let mut cache = Cache::new(2);
     assert!(cache.is_empty());

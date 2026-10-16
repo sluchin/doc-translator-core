@@ -17,7 +17,11 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use std::io::Write;
+
 use tauri::{Manager, State};
+use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_fs::{FsExt, OpenOptions};
 
 pub use docs::Site;
 use free::GoogleFree;
@@ -214,6 +218,67 @@ fn schedule_save(app: &tauri::AppHandle) {
     });
 }
 
+/// 翻訳のキャッシュを, 利用者が選んだ場所に書き出す (保存の画面を開く. Android では, Google Drive も選べる).
+///
+/// 別の端末で [`import_cache`] で読み込むと, 翻訳を引き継げる. 書き出したら true, やめたら false.
+#[tauri::command]
+async fn export_cache(app: tauri::AppHandle, state: State<'_, AppState>) -> Result<bool, String> {
+    let snapshot = state.cache.lock().map_err(|e| e.to_string())?.snapshot();
+    // ファイルの名前は, アプリ (サイト) ごとに分ける (別のアプリのキャッシュと, 取り違えない)
+    let name = format!("{}-cache.json", state.site.host.replace('.', "-"));
+    let dialog = app.dialog().file().set_file_name(name);
+    let Some(path) = tokio::task::spawn_blocking(move || dialog.blocking_save_file())
+        .await
+        .map_err(|e| e.to_string())?
+    else {
+        return Ok(false);
+    };
+    let fs_app = app.clone();
+    tokio::task::spawn_blocking(move || -> Result<(), String> {
+        let mut options = OpenOptions::new();
+        options.write(true).create(true).truncate(true);
+        let mut file = fs_app.fs().open(path, options).map_err(|e| e.to_string())?;
+        file.write_all(translate::entries_to_json(&snapshot).as_bytes())
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+
+    Ok(true)
+}
+
+/// 書き出したキャッシュを読み込んで, 端末のキャッシュに足し合わせる (選択の画面を開く).
+///
+/// 返すのは, 新しく足した翻訳の数. 選ぶのをやめたら null.
+#[tauri::command]
+async fn import_cache(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<Option<usize>, String> {
+    let dialog = app.dialog().file();
+    let Some(path) = tokio::task::spawn_blocking(move || dialog.blocking_pick_file())
+        .await
+        .map_err(|e| e.to_string())?
+    else {
+        return Ok(None);
+    };
+    let fs_app = app.clone();
+    let text = tokio::task::spawn_blocking(move || fs_app.fs().read_to_string(path))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
+    let added = state
+        .cache
+        .lock()
+        .map_err(|e| e.to_string())?
+        .merge_json(&text)?;
+    if added > 0 {
+        schedule_save(&app);
+    }
+
+    Ok(Some(added))
+}
+
 /// バックエンドとキャッシュで翻訳する (`batch` 個ずつ, キャッシュに入れる).
 async fn translate_with<B: Backend>(
     state: &State<'_, AppState>,
@@ -271,10 +336,13 @@ fn set_settings(state: State<'_, AppState>, update: Update) -> Result<View, Stri
 /// アプリの Tauri ビルダーを作る (コマンドと状態は、設定済み).
 ///
 /// ML Kit のプラグイン (`tauri_plugin_mlkit::init()`) は、Android のビルドが、アプリの直接の依存から
-/// 見つけるので、アプリ側で `.plugin(...)` に足す.
+/// 見つけるので、アプリ側で `.plugin(...)` に足す. ダイアログとファイルのプラグインも、アプリの `Cargo.toml` の
+/// 直接の依存に入れる (Android のプロジェクトに、プラグインを含めるため).
 pub fn builder(site: Site) -> tauri::Builder<tauri::Wry> {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .setup(move |app| {
             let dir = app.path().app_data_dir()?;
             let cache = std::fs::read_to_string(dir.join(CACHE_FILE))
@@ -296,6 +364,8 @@ pub fn builder(site: Site) -> tauri::Builder<tauri::Wry> {
             fetch_json,
             translate,
             lookup_cache,
+            export_cache,
+            import_cache,
             check_mlkit,
             get_settings,
             set_settings

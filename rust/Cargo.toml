@@ -9,6 +9,9 @@ edition = "2024"
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
+# キャッシュの書き出しと読み込み (保存と選択の画面. Android では, Google Drive も選べる) と, 選んだファイルの読み書き
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
 tauri-plugin-mlkit = { path = "../plugins/tauri-plugin-mlkit" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
