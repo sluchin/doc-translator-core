@@ -29,26 +29,14 @@ fn rejects_an_unexpected_response() {
 }
 
 #[test]
-fn explains_the_limit() {
-    assert!(free_error(429).contains("limiting"));
-    assert!(free_error(503).contains("limiting"));
-    // 確認の画面へのリダイレクトも、断られたものとして扱う
-    assert!(free_error(302).contains("limiting the requests (HTTP 302)"));
+fn explains_the_limit_and_the_block() {
+    assert!(free_error(429).contains("limiting the requests (HTTP 429)"));
+    assert!(free_error(503).contains("limiting the requests (HTTP 503)"));
+    // 確認の画面へのリダイレクトは、ネットワークを止められたもの
+    assert!(free_error(302).contains("blocked this network for unusual traffic (HTTP 302)"));
+    assert!(is_blocked(300) && is_blocked(399));
+    assert!(!is_blocked(200) && !is_blocked(400) && !is_blocked(429));
     assert_eq!(free_error(500), "Google Translate (free) failed (HTTP 500)");
-}
-
-#[test]
-fn retries_only_when_limited_and_within_the_retries() {
-    assert!(is_limited(429) && is_limited(503) && is_limited(300) && is_limited(399));
-    assert!(!is_limited(200) && !is_limited(400) && !is_limited(500));
-    // 待つ時間は、やり直すたびに長くなる
-    let first = retry_wait(429, 0).unwrap();
-    let last = retry_wait(302, 2).unwrap();
-    assert!(first < last);
-    // 回数を使い切ったら、やり直さない
-    assert_eq!(retry_wait(429, 3), None);
-    // 断られたのでなければ、やり直さない
-    assert_eq!(retry_wait(500, 0), None);
 }
 
 #[test]

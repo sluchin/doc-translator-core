@@ -14,7 +14,7 @@ use tokio::task::JoinSet;
 use url::form_urlencoded;
 
 use crate::plain::PlainTranslator;
-use crate::translate::{SOURCE, TARGET, retry_delay};
+use crate::translate::{SOURCE, TARGET};
 
 /// 無料の Google 翻訳の入口.
 const FREE_URL: &str = "https://translate.googleapis.com/translate_a/single";
@@ -24,9 +24,6 @@ pub const DEFAULT_PARALLEL: usize = 4;
 
 /// 同時に送る依頼の数の上限 (設定で、1 から、これまで選べる).
 pub const MAX_PARALLEL: usize = 8;
-
-/// 断られたときに、やり直す回数.
-const RETRIES: u32 = 3;
 
 /// 依頼の本文を作る (URL の長さの制限を避けるため、文章は、POST の本文に入れる).
 pub fn free_body(text: &str) -> String {
@@ -53,18 +50,9 @@ pub fn parse_free(text: &str) -> Result<String, String> {
         .collect())
 }
 
-/// 断られた応答か (429 と 503. 確認の画面へのリダイレクト (3xx) も、断られたものとして扱う).
-pub fn is_limited(status: u16) -> bool {
-    status == 429 || status == 503 || (300..400).contains(&status)
-}
-
-/// やり直す前に待つ時間 (断られていて、やり直す回数が残っているとき. ほかは None).
-pub fn retry_wait(status: u16, attempt: u32) -> Option<std::time::Duration> {
-    if is_limited(status) && attempt < RETRIES {
-        Some(retry_delay(attempt))
-    } else {
-        None
-    }
+/// ネットワークを止められた応答か (確認の画面 (`google.com/sorry`) へのリダイレクト. 3xx).
+pub fn is_blocked(status: u16) -> bool {
+    (300..400).contains(&status)
 }
 
 /// 同時に送る依頼の数を、1 から上限までに収める.
@@ -73,8 +61,15 @@ pub fn clamp_parallel(parallel: usize) -> usize {
 }
 
 /// 断られたときのメッセージ.
+///
+/// 自動では、やり直さない (止められている間は、やり直しても断られ、止められる時間が延びることがある).
+/// 利用者が、画面の「やり直す」で送り直す.
 pub fn free_error(status: u16) -> String {
-    if is_limited(status) {
+    if is_blocked(status) {
+        format!(
+            "Google Translate (free) has blocked this network for unusual traffic (HTTP {status}). Wait a few hours and retry, or use mobile data or another service"
+        )
+    } else if status == 429 || status == 503 {
         format!(
             "Google Translate (free) is limiting the requests (HTTP {status}). Wait a while and retry, or use another service"
         )
@@ -88,32 +83,21 @@ pub async fn translate_one(client: reqwest::Client, text: String) -> Result<Stri
     if text.trim().is_empty() {
         return Ok(text);
     }
-    let mut attempt = 0;
-    let body = loop {
-        let response = client
-            .post(FREE_URL)
-            .header(
-                reqwest::header::CONTENT_TYPE,
-                "application/x-www-form-urlencoded",
-            )
-            .body(free_body(&text))
-            .send()
-            .await
-            .map_err(|e| e.to_string())?;
-        let status = response.status().as_u16();
-        let body = response.text().await.map_err(|e| e.to_string())?;
-        if status == 200 {
-            break body;
-        }
-        // 断られたら、少し待って、やり直す
-        match retry_wait(status, attempt) {
-            Some(wait) => {
-                tokio::time::sleep(wait).await;
-                attempt += 1;
-            }
-            None => return Err(free_error(status)),
-        }
-    };
+    let response = client
+        .post(FREE_URL)
+        .header(
+            reqwest::header::CONTENT_TYPE,
+            "application/x-www-form-urlencoded",
+        )
+        .body(free_body(&text))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    let status = response.status().as_u16();
+    let body = response.text().await.map_err(|e| e.to_string())?;
+    if status != 200 {
+        return Err(free_error(status));
+    }
     // 前後の空白は、翻訳で落ちるので、元のままにそろえる
     let translated = parse_free(&body)?;
     let lead: String = text.chars().take_while(|c| c.is_whitespace()).collect();
