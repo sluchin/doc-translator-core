@@ -230,7 +230,7 @@ export function useViewer(profile: SiteProfile): Viewer {
     }
     autoVersion.current ??= api
       .fetchPage(source.url)
-      .then((text) => versionFromText(text, source.pattern))
+      .then((text) => versionFromText(text, source.pattern, source.highest))
       .catch(() => undefined);
     return autoVersion.current;
   }, [profile]);

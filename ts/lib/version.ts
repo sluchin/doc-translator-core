@@ -81,14 +81,60 @@ export function parseVersions(
 }
 
 /**
+ * 版を, 数の並びにする (`6-0` や `2.4.21` を, 数字の区切りごとに比べるため).
+ *
+ * @param version 版
+ * @returns 数の並び
+ */
+function versionNumbers(version: string): number[] {
+  return version
+    .split(/[^0-9]+/)
+    .filter(Boolean)
+    .map(Number);
+}
+
+/**
+ * 2 つの版を比べる (数字の区切りごと. 例: `5-10` は `5-9` より新しい).
+ *
+ * @param a 版
+ * @param b 版
+ * @returns a が新しければ正, 古ければ負, 同じなら 0
+ */
+export function compareVersions(a: string, b: string): number {
+  const [x, y] = [versionNumbers(a), versionNumbers(b)];
+  for (let i = 0; i < Math.max(x.length, y.length); i += 1) {
+    const diff = (x[i] ?? 0) - (y[i] ?? 0);
+    if (diff !== 0) {
+      return diff;
+    }
+  }
+  return 0;
+}
+
+/**
  * ファイルの中身から, 版を読み取る.
  *
  * @param text ファイルの中身
  * @param pattern 中身に合わせる正規表現 (1 つ目のグループが版)
+ * @param highest true なら, 合うもの全てのうち, 一番新しい版 (一覧から今の版を選ぶとき). 既定は, 最初に合うもの
  * @returns 版 (合わなければ undefined)
  */
-export function versionFromText(text: string, pattern: RegExp): string | undefined {
-  return pattern.exec(text)?.[1];
+export function versionFromText(
+  text: string,
+  pattern: RegExp,
+  highest = false,
+): string | undefined {
+  if (!highest) {
+    return pattern.exec(text)?.[1];
+  }
+  const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
+  return [...text.matchAll(new RegExp(pattern.source, flags))]
+    .map((match) => match[1])
+    .reduce<string | undefined>(
+      (best, version) =>
+        best === undefined || compareVersions(version, best) > 0 ? version : best,
+      undefined,
+    );
 }
 
 /**

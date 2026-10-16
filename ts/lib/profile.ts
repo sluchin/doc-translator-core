@@ -113,6 +113,8 @@ export interface SiteProfile {
     readonly url: string;
     /** 中身に合わせる正規表現 (1 つ目のグループが版). */
     readonly pattern: RegExp;
+    /** true なら, 合うもの全てのうち, 一番新しい版を選ぶ (版の一覧から, 今の版を選ぶとき). 既定は, 最初に合うもの. */
+    readonly highest?: boolean;
   };
   /** サイトが日本語のとき true (翻訳しない. 原文の切り替えと設定のボタンも出さない). 既定は false. */
   readonly japanese?: boolean;

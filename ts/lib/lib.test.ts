@@ -27,6 +27,7 @@ import {
 } from "./menu";
 import { sanitize } from "./sanitize";
 import {
+  compareVersions,
   parseVersions,
   versionFromText,
   versionOf,
@@ -193,6 +194,21 @@ describe("version", () => {
       versionFromText("<p data-x=\"Latest release: <a href='new2420.html'>2.4.21</a>\">", pattern),
     ).toBe("2.4.21");
     expect(versionFromText("<p>no version</p>", pattern)).toBeUndefined();
+  });
+
+  it("picks the newest version of a list", () => {
+    const list =
+      '<a href="notes/v-5-9.html">5.9</a><a href="notes/v-5-10.html">5.10</a><a href="notes/v-4-0.html">4.0</a>';
+    const pattern = /notes\/v-(\d+-\d+)\.html/;
+    // 最初に合うもの (既定) と, 一番新しいもの (数字の区切りごとに比べる. 5-10 は 5-9 より新しい)
+    expect(versionFromText(list, pattern)).toBe("5-9");
+    expect(versionFromText(list, pattern, true)).toBe("5-10");
+    expect(versionFromText(list, /notes\/v-(\d+-\d+)\.html/g, true)).toBe("5-10");
+    expect(versionFromText("<p>none</p>", pattern, true)).toBeUndefined();
+    expect(compareVersions("2.4.21", "2.4.3")).toBeGreaterThan(0);
+    expect(compareVersions("1.0", "1.0.0")).toBe(0);
+    expect(compareVersions("1.0", "1.0.1")).toBeLessThan(0);
+    expect(compareVersions("1.0.1", "1.0")).toBeGreaterThan(0);
   });
 
   it("removes the version from the path to compare it with the tabs", () => {
