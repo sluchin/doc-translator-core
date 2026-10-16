@@ -20,7 +20,36 @@ fn update(provider: Provider, google: Option<&str>, gemini: Option<&str>, model:
         google_key: google.map(str::to_string),
         gemini_key: gemini.map(str::to_string),
         gemini_model: model.to_string(),
+        free_parallel: None,
     }
+}
+
+#[test]
+fn sets_the_parallel_requests_of_the_free_service() {
+    let mut settings = Settings::default();
+    assert_eq!(
+        settings.free_parallel,
+        doc_translator_core::free::DEFAULT_PARALLEL
+    );
+    // None なら変えない. 範囲の外は、1 から上限までに収める
+    let mut change = update(Provider::Googlefree, None, None, "");
+    settings.apply(&change);
+    assert_eq!(
+        settings.free_parallel,
+        doc_translator_core::free::DEFAULT_PARALLEL
+    );
+    change.free_parallel = Some(2);
+    settings.apply(&change);
+    assert_eq!(settings.view(false).free_parallel, 2);
+    change.free_parallel = Some(0);
+    settings.apply(&change);
+    assert_eq!(settings.free_parallel, 1);
+    // 設定のファイルに、範囲の外の値が書かれていても、画面には、収めた値を返す
+    settings.free_parallel = 100;
+    assert_eq!(
+        settings.view(false).free_parallel,
+        doc_translator_core::free::MAX_PARALLEL
+    );
 }
 
 #[test]

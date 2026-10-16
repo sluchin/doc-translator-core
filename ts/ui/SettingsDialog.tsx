@@ -7,6 +7,9 @@
 import { useEffect, useState } from "react";
 import * as api from "./api";
 
+/** 無料の Google 翻訳に、同時に送る依頼の数の選択肢 (Rust の `free::MAX_PARALLEL` までの数). */
+const PARALLEL_CHOICES = [1, 2, 3, 4, 5, 6, 7, 8];
+
 /** 設定の画面の引数. */
 interface Props {
   /** 閉じる. */
@@ -27,6 +30,7 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
   const [googleKey, setGoogleKey] = useState("");
   const [geminiKey, setGeminiKey] = useState("");
   const [model, setModel] = useState("");
+  const [parallel, setParallel] = useState(4);
   const [message, setMessage] = useState<string>();
   const [notice, setNotice] = useState<string>();
   const [checking, setChecking] = useState(false);
@@ -37,6 +41,7 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
       setView(loaded);
       setProvider(loaded.provider);
       setModel(loaded.geminiModel);
+      setParallel(loaded.freeParallel);
     });
   }, []);
 
@@ -48,6 +53,7 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
         googleKey: clear === "google" ? "" : googleKey || undefined,
         geminiKey: clear === "gemini" ? "" : geminiKey || undefined,
         geminiModel: model,
+        freeParallel: parallel,
       });
       setView(saved);
       setGoogleKey("");
@@ -153,6 +159,18 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
             ではありません）。仕様が変わったり、短い時間に多く送ると、断られたりすることがあります。個人が読むために使ってください。文章は、Google
             に送られます。
           </p>
+        )}
+        {provider === "googlefree" && (
+          <label>
+            同時に送る数（少ないほど遅く、断られにくい）
+            <select value={parallel} onChange={(event) => setParallel(Number(event.target.value))}>
+              {PARALLEL_CHOICES.map((count) => (
+                <option key={count} value={count}>
+                  {count}
+                </option>
+              ))}
+            </select>
+          </label>
         )}
         {provider === "mlkit" && (
           <p>

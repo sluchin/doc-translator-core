@@ -9,6 +9,8 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
+use crate::free::{DEFAULT_PARALLEL, clamp_parallel};
+
 /// 設定のファイルの名前.
 pub const FILE_NAME: &str = "settings.json";
 
@@ -64,6 +66,8 @@ pub struct Settings {
     pub gemini_key: Option<String>,
     /// Gemini のモデル.
     pub gemini_model: String,
+    /// 無料の Google 翻訳に、同時に送る依頼の数.
+    pub free_parallel: usize,
 }
 
 impl Default for Settings {
@@ -73,6 +77,7 @@ impl Default for Settings {
             api_key: None,
             gemini_key: None,
             gemini_model: DEFAULT_GEMINI_MODEL.to_string(),
+            free_parallel: DEFAULT_PARALLEL,
         }
     }
 }
@@ -89,6 +94,9 @@ pub struct Update {
     pub gemini_key: Option<String>,
     /// Gemini のモデル (空なら既定).
     pub gemini_model: String,
+    /// 無料の Google 翻訳に、同時に送る依頼の数 (None なら変えない).
+    #[serde(default)]
+    pub free_parallel: Option<usize>,
 }
 
 /// 画面に返す設定 (キーそのものは返さない).
@@ -103,6 +111,8 @@ pub struct View {
     pub has_gemini_key: bool,
     /// Gemini のモデル.
     pub gemini_model: String,
+    /// 無料の Google 翻訳に、同時に送る依頼の数.
+    pub free_parallel: usize,
     /// ML Kit が使えるか (Android だけ).
     pub mlkit_available: bool,
 }
@@ -146,6 +156,9 @@ impl Settings {
         } else {
             model.to_string()
         };
+        if let Some(parallel) = update.free_parallel {
+            self.free_parallel = clamp_parallel(parallel);
+        }
     }
 
     /// 選んだサービスの API キー (ML Kit は、キーが要らないので、空の文字列).
@@ -164,6 +177,7 @@ impl Settings {
             has_google_key: self.api_key.is_some(),
             has_gemini_key: self.gemini_key.is_some(),
             gemini_model: self.gemini_model.clone(),
+            free_parallel: clamp_parallel(self.free_parallel),
             mlkit_available,
         }
     }

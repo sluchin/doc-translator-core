@@ -61,6 +61,8 @@ export interface SettingsView {
   hasGeminiKey: boolean;
   /** Gemini のモデル. */
   geminiModel: string;
+  /** 無料の Google 翻訳に、同時に送る依頼の数. */
+  freeParallel: number;
   /** ML Kit が使えるか (Android だけ). */
   mlkitAvailable: boolean;
 }
@@ -75,6 +77,8 @@ export interface SettingsUpdate {
   geminiKey?: string;
   /** Gemini のモデル (空なら既定). */
   geminiModel: string;
+  /** 無料の Google 翻訳に、同時に送る依頼の数 (undefined なら変えない). */
+  freeParallel?: number;
 }
 
 /**

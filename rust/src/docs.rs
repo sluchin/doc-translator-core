@@ -61,6 +61,18 @@ pub fn build_client(site: Site) -> Result<reqwest::Client, String> {
         .map_err(|e| e.to_string())
 }
 
+/// 翻訳の API に使う HTTP クライアントを作る (リダイレクトは, たどらない).
+///
+/// 無料の Google 翻訳は, 断るときに, 確認の画面へリダイレクトすることがある. たどらずに, 応答の状態として扱う.
+pub fn build_api_client(site: Site) -> Result<reqwest::Client, String> {
+    reqwest::Client::builder()
+        .user_agent(site.user_agent)
+        .timeout(TIMEOUT)
+        .redirect(Policy::none())
+        .build()
+        .map_err(|e| e.to_string())
+}
+
 /// 取得するものの種類.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {

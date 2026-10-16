@@ -70,6 +70,8 @@ async fn refuses_other_hosts_without_a_request() {
         user_agent: "test/0.1",
     };
     let client = build_client(site).unwrap();
+    // 翻訳の API のクライアントも作れる (リダイレクトは, たどらない)
+    assert!(build_api_client(site).is_ok());
     let error = fetch_page(&client, site, "https://example.com/")
         .await
         .unwrap_err();

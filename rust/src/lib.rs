@@ -35,7 +35,10 @@ struct AppState {
     site: Site,
     settings: Mutex<Settings>,
     cache: Mutex<Cache>,
+    /// ページの取得に使う HTTP クライアント (リダイレクトは, ドキュメントのホストの中だけ).
     client: reqwest::Client,
+    /// 翻訳の API に使う HTTP クライアント (リダイレクトは, たどらない).
+    api_client: reqwest::Client,
 }
 
 /// ML Kit (Android のプラグイン) を、プレーンテキストの翻訳として使う.
@@ -95,15 +98,20 @@ async fn translate(
     state: State<'_, AppState>,
     texts: Vec<String>,
 ) -> Result<Vec<String>, String> {
-    let (provider, key, model) = {
+    let (provider, key, model, parallel) = {
         let settings = state.settings.lock().map_err(|e| e.to_string())?;
         let key = settings
             .key_for_provider()
             .ok_or_else(|| "NO_API_KEY".to_string())?
             .to_string();
-        (settings.provider, key, settings.gemini_model.clone())
+        (
+            settings.provider,
+            key,
+            settings.gemini_model.clone(),
+            settings.free_parallel,
+        )
     };
-    let client = state.client.clone();
+    let client = state.api_client.clone();
     // キャッシュを分ける名前 (サービスと, Gemini のモデル)
     let namespace = provider.namespace(&model);
     let (results, added) = match provider {
@@ -123,7 +131,7 @@ async fn translate(
             translate_with(
                 &state,
                 &namespace,
-                &PlainBackend::new(GoogleFree::new(client)),
+                &PlainBackend::new(GoogleFree::new(client, parallel)),
                 &texts,
             )
             .await?
@@ -199,6 +207,7 @@ pub fn builder(site: Site) -> tauri::Builder<tauri::Wry> {
                 settings: Mutex::new(Settings::load(&dir)),
                 cache: Mutex::new(cache),
                 client: docs::build_client(site)?,
+                api_client: docs::build_api_client(site)?,
                 site,
                 dir,
             });
