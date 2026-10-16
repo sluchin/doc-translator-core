@@ -6,6 +6,7 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::future::Future;
+use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -28,6 +29,9 @@ pub const GEMINI_BATCH: usize = 10;
 /// Gemini に、同時に送る依頼の数.
 pub const GEMINI_PARALLEL: usize = 4;
 
+/// Gemini が、依頼と違う数の翻訳を返したときのエラー (このときは、半分に分けて、やり直す).
+pub const GEMINI_MISMATCH: &str = "Gemini returned a different number of texts";
+
 /// Gemini の指示 (システムプロンプト).
 const GEMINI_PROMPT: &str = "You translate fragments of software technical documentation (programming languages, libraries, operating systems) from English to Japanese. \
 The input is a JSON array of HTML fragments. Return a JSON array of strings with exactly the same length and order; \
@@ -35,6 +39,7 @@ each output string is the Japanese translation of the input fragment at the same
 Rules: keep every HTML tag and attribute exactly as it is, and keep the tags in the translation. \
 Never translate or change the content of elements with translate=\"no\" or class \"notranslate\". \
 Do not translate identifiers, API, type and function names, configuration symbols, keywords, file paths, commands, and code. \
+Translate faithfully and concisely: never add, explain, or expand anything that is not in the input, even for a single word. \
 Use a natural, accurate technical Japanese style (です・ます調). Do not add explanations.";
 
 /// 翻訳元の言語.
@@ -364,6 +369,56 @@ pub fn rejects_thinking(status: u16, body: &str) -> bool {
     status == 400 && body.to_ascii_lowercase().contains("thinking")
 }
 
+/// 空白だけの文章を除く (モデルが、空の文字列を落として、数が合わなくなることがある).
+///
+/// 返すのは、送る文章の、元の位置の一覧と、送る文章.
+pub fn split_blank(texts: &[String]) -> (Vec<usize>, Vec<String>) {
+    texts
+        .iter()
+        .enumerate()
+        .filter(|(_, text)| !text.trim().is_empty())
+        .map(|(index, text)| (index, text.clone()))
+        .unzip()
+}
+
+/// 翻訳を、元の位置に戻す (除いた空白だけの文章は、そのまま).
+pub fn merge_blank(texts: &[String], indexes: &[usize], translated: Vec<String>) -> Vec<String> {
+    let mut merged = texts.to_vec();
+    for (index, result) in indexes.iter().zip(translated) {
+        merged[*index] = result;
+    }
+
+    merged
+}
+
+/// 文章を翻訳する. 数が合わないエラー ([`GEMINI_MISMATCH`]) のときは、半分に分けて、それぞれ、やり直す.
+///
+/// 1 つだけで合わないときは、原文のままにする (ページ全体は、失敗にしない). 数の違い以外のエラーは、そのまま返す.
+pub fn translate_halving<'a, F, Fut>(
+    texts: Vec<String>,
+    send: &'a F,
+) -> Pin<Box<dyn Future<Output = Result<Vec<String>, String>> + Send + 'a>>
+where
+    F: Fn(Vec<String>) -> Fut + Send + Sync + 'a,
+    Fut: Future<Output = Result<Vec<String>, String>> + Send + 'a,
+{
+    Box::pin(async move {
+        match send(texts.clone()).await {
+            Err(error) if error == GEMINI_MISMATCH => {
+                if texts.len() <= 1 {
+                    return Ok(texts);
+                }
+                let (first, second) = texts.split_at(texts.len() / 2);
+                let mut results = translate_halving(first.to_vec(), send).await?;
+                results.extend(translate_halving(second.to_vec(), send).await?);
+
+                Ok(results)
+            }
+            other => other,
+        }
+    })
+}
+
 /// 文章を、1 回の依頼の大きさ (`size` 個) に分ける (順は変えない).
 pub fn split_batches(texts: &[String], size: usize) -> Vec<Vec<String>> {
     texts.chunks(size.max(1)).map(<[String]>::to_vec).collect()
@@ -387,7 +442,7 @@ pub fn parse_gemini(text: &str, expected: usize) -> Result<Vec<String>, String> 
     let texts: Vec<String> = serde_json::from_str(&answer)
         .map_err(|_| "Gemini returned an unexpected answer".to_string())?;
     if texts.len() != expected {
-        return Err("Gemini returned a different number of texts".to_string());
+        return Err(GEMINI_MISMATCH.to_string());
     }
 
     Ok(texts)
@@ -446,25 +501,32 @@ impl Backend for GeminiBackend {
         texts: &[String],
     ) -> impl Future<Output = Result<Vec<String>, String>> + Send {
         let url = self.url();
-        let batches = split_batches(texts, GEMINI_BATCH);
         let client = self.client.clone();
         let key = self.api_key.clone();
         let rejected = self.thinking_rejected.clone();
 
         // 小さく分けて、GEMINI_PARALLEL 個ずつ、同時に送る (1 つが失敗したら、残りは、やめる)
+        let all = texts.to_vec();
+        let (indexes, sendable) = split_blank(texts);
+        let batches = split_batches(&sendable, GEMINI_BATCH);
+
         async move {
+            let send = move |batch: Vec<String>| {
+                gemini_request(
+                    client.clone(),
+                    url.clone(),
+                    key.clone(),
+                    batch,
+                    rejected.clone(),
+                )
+            };
+            let send = Arc::new(send);
             let mut results = Vec::new();
             for wave in batches.chunks(GEMINI_PARALLEL) {
                 let mut tasks = JoinSet::new();
                 for (index, batch) in wave.iter().enumerate() {
-                    let request = gemini_request(
-                        client.clone(),
-                        url.clone(),
-                        key.clone(),
-                        batch.clone(),
-                        rejected.clone(),
-                    );
-                    tasks.spawn(async move { (index, request.await) });
+                    let (send, batch) = (send.clone(), batch.clone());
+                    tasks.spawn(async move { (index, translate_halving(batch, &*send).await) });
                 }
                 let mut parts = vec![Vec::new(); wave.len()];
                 while let Some(done) = tasks.join_next().await {
@@ -474,7 +536,7 @@ impl Backend for GeminiBackend {
                 results.extend(parts.into_iter().flatten());
             }
 
-            Ok(results)
+            Ok(merge_blank(&all, &indexes, results))
         }
     }
 }

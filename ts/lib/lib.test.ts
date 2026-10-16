@@ -382,6 +382,8 @@ describe("translatePage", () => {
     expect(result.html).toContain("int x = 1; // keep");
     expect(result.html).toContain("only_code");
     expect(result.kept).toBe(0);
+    // 最初の依頼が終わる前に、0 から、経過を出す
+    expect(seen[0]).toBe(0);
     expect(seen.at(-1)).toBe(1);
   });
 
@@ -481,7 +483,9 @@ describe("translatePage", () => {
       async (texts) => texts.map((text) => `C(${text})`),
     );
     expect(send).not.toHaveBeenCalled();
-    expect(progress).not.toHaveBeenCalled();
+    // 全部が翻訳済みなら、全部が終わった経過を、1 回だけ出す
+    expect(progress).toHaveBeenCalledTimes(1);
+    expect(progress).toHaveBeenCalledWith({ done: 2, total: 2 });
     expect(result.title).toBe("C(Sample Topic)");
     expect(result.html).toContain("C(Hello)");
   });

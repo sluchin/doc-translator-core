@@ -196,6 +196,12 @@ fn builds_the_gemini_request() {
             .unwrap()
             .contains("translate=\"no\"")
     );
+    assert!(
+        body["systemInstruction"]["parts"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("never add, explain, or expand")
+    );
     // 指示文は、特定のサイトの名前を含まない (ほかのアプリも、共通のコードを使う)
     assert!(
         !body["systemInstruction"]["parts"][0]["text"]
@@ -254,6 +260,60 @@ fn splits_the_texts_into_small_batches_in_order() {
     // 40 個 (画面が 1 回に渡す数) は、同時に送る数の、1 回分に収まる
     let forty: Vec<String> = (0..40).map(|i| i.to_string()).collect();
     assert_eq!(split_batches(&forty, GEMINI_BATCH).len(), GEMINI_PARALLEL);
+}
+
+#[test]
+fn skips_the_blank_texts_and_puts_the_translations_back() {
+    let all = texts(&["a", " ", "b", "", "c"]);
+    let (indexes, sendable) = split_blank(&all);
+    assert_eq!(indexes, vec![0, 2, 4]);
+    assert_eq!(sendable, texts(&["a", "b", "c"]));
+    let translated = texts(&["JA:a", "JA:b", "JA:c"]);
+    assert_eq!(
+        merge_blank(&all, &indexes, translated),
+        texts(&["JA:a", " ", "JA:b", "", "JA:c"])
+    );
+    assert!(split_blank(&[]).1.is_empty());
+}
+
+#[tokio::test]
+async fn halves_the_batch_when_the_number_does_not_match() {
+    let calls = Mutex::new(Vec::new());
+    // 3 個以上は、数が合わない (モデルが、数を間違える). 2 個までは、翻訳できる
+    let send = |batch: Vec<String>| {
+        calls.lock().unwrap().push(batch.len());
+        async move {
+            if batch.len() > 2 {
+                Err(GEMINI_MISMATCH.to_string())
+            } else {
+                Ok(batch.iter().map(|text| format!("JA:{text}")).collect())
+            }
+        }
+    };
+    let all = texts(&["a", "b", "c", "d", "e"]);
+    let result = translate_halving(all, &send).await.unwrap();
+
+    assert_eq!(result, texts(&["JA:a", "JA:b", "JA:c", "JA:d", "JA:e"]));
+    // 5 個で失敗 → 2 個と 3 個 (3 個は、また失敗 → 1 個と 2 個)
+    assert_eq!(*calls.lock().unwrap(), vec![5, 2, 3, 1, 2]);
+}
+
+#[tokio::test]
+async fn keeps_a_single_text_that_never_matches_and_passes_other_errors() {
+    let never = |_: Vec<String>| async { Err::<Vec<String>, String>(GEMINI_MISMATCH.to_string()) };
+    // 1 つだけで合わないときは、原文のまま (ページ全体は、失敗にしない)
+    assert_eq!(
+        translate_halving(texts(&["a", "b"]), &never).await.unwrap(),
+        texts(&["a", "b"])
+    );
+    // 数の違い以外のエラーは、そのまま返す
+    let busy = |_: Vec<String>| async { Err::<Vec<String>, String>("busy".to_string()) };
+    assert_eq!(
+        translate_halving(texts(&["a", "b"]), &busy)
+            .await
+            .unwrap_err(),
+        "busy"
+    );
 }
 
 #[test]

@@ -167,8 +167,9 @@ export async function translatePage(
   });
   const pending = unique.filter((text) => !translations.has(text));
   let done = unique.length - pending.length;
+  // 最初の依頼が終わるのを待たずに、経過を出す (翻訳済みの数から. 遅いサービスでも、始まったことが分かる)
+  onProgress({ done, total: unique.length });
   if (done > 0 && pending.length > 0) {
-    onProgress({ done, total: unique.length });
     onPartial(apply());
   }
 
