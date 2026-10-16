@@ -22,13 +22,13 @@ pub const DEFAULT_GEMINI_MODEL: &str = "gemini-flash-latest";
 #[serde(rename_all = "lowercase")]
 pub enum Provider {
     /// Google Cloud Translation (Basic, v2).
-    #[default]
     Google,
     /// Gemini API.
     Gemini,
     /// ML Kit (Android の端末の中で翻訳する. オフライン).
     Mlkit,
-    /// 無料の Google 翻訳 (非公式の入口. キーは要らない).
+    /// 無料の Google 翻訳 (非公式の入口. キーは要らない. 既定).
+    #[default]
     Googlefree,
 }
 

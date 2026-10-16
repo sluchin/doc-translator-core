@@ -122,5 +122,11 @@ fn picks_the_key_of_the_provider_and_hides_the_keys() {
     assert_eq!(Provider::Google.namespace("m1"), "google");
     assert_eq!(Provider::Mlkit.namespace("m1"), "mlkit");
     assert_eq!(Provider::Googlefree.namespace("m1"), "googlefree");
-    assert_eq!(Settings::default().key_for_provider(), None);
+    assert_eq!(Settings::default().provider, Provider::Googlefree);
+    assert_eq!(Settings::default().key_for_provider(), Some(""));
+    let google = Settings {
+        provider: Provider::Google,
+        ..Settings::default()
+    };
+    assert_eq!(google.key_for_provider(), None);
 }

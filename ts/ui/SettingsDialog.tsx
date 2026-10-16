@@ -26,7 +26,7 @@ interface Props {
  */
 export function SettingsDialog({ onClose, onSaved }: Props) {
   const [view, setView] = useState<api.SettingsView>();
-  const [provider, setProvider] = useState<api.Provider>("google");
+  const [provider, setProvider] = useState<api.Provider>("googlefree");
   const [googleKey, setGoogleKey] = useState("");
   const [geminiKey, setGeminiKey] = useState("");
   const [model, setModel] = useState("");
