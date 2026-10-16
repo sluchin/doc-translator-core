@@ -115,7 +115,9 @@ fn tokenize(html: &str) -> Vec<Token<'_>> {
                 rest = &rest[length..];
             }
             None => {
-                let next = rest[1..].find('<').map_or(rest.len(), |i| i + 1);
+                // 先頭の 1 文字を飛ばす (バイトで 1 つ飛ばすと, 日本語や「’」で始まる文章の, 文字の途中で切って, panic する)
+                let first = rest.chars().next().map_or(1, char::len_utf8);
+                let next = rest[first..].find('<').map_or(rest.len(), |i| i + first);
                 tokens.push(Token {
                     raw: &rest[..next],
                     tag: None,

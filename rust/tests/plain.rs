@@ -88,6 +88,29 @@ fn decodes_and_encodes_the_entities() {
 }
 
 #[test]
+fn splits_the_text_that_starts_with_a_multibyte_character() {
+    // タグの直後の文章が, 複数バイトの文字で始まっても, 文字の途中で切らない
+    assert_eq!(
+        pieces("<b>x</b>’s — ok"),
+        vec![
+            Piece::Raw("<b>".to_string()),
+            Piece::Text("x".to_string()),
+            Piece::Raw("</b>".to_string()),
+            Piece::Text("’s — ok".to_string()),
+        ]
+    );
+    assert_eq!(
+        pieces("™<i>日本語</i>"),
+        vec![
+            Piece::Text("™".to_string()),
+            Piece::Raw("<i>".to_string()),
+            Piece::Text("日本語".to_string()),
+            Piece::Raw("</i>".to_string()),
+        ]
+    );
+}
+
+#[test]
 fn handles_void_tags_comments_and_broken_tags() {
     let parts = pieces("A<br>B<img src=x />C<!-- c -->D<p");
     assert_eq!(
