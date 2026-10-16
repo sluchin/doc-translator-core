@@ -114,9 +114,22 @@ async fn translate(
     let client = state.api_client.clone();
     // キャッシュを分ける名前 (サービスと, Gemini のモデル)
     let namespace = provider.namespace(&model);
-    let (results, added) = match provider {
+    // 無料の Google 翻訳は, 同時に送る数ずつキャッシュに入れる (断られても, 翻訳できた分を捨てない)
+    let batch = if provider == Provider::Googlefree {
+        free::clamp_parallel(parallel)
+    } else {
+        usize::MAX
+    };
+    let result = match provider {
         Provider::Google => {
-            translate_with(&state, &namespace, &GoogleBackend::new(client, key), &texts).await?
+            translate_with(
+                &state,
+                &namespace,
+                &GoogleBackend::new(client, key),
+                &texts,
+                batch,
+            )
+            .await
         }
         Provider::Gemini => {
             translate_with(
@@ -124,8 +137,9 @@ async fn translate(
                 &namespace,
                 &GeminiBackend::new(client, key, model),
                 &texts,
+                batch,
             )
-            .await?
+            .await
         }
         Provider::Googlefree => {
             translate_with(
@@ -133,8 +147,9 @@ async fn translate(
                 &namespace,
                 &PlainBackend::new(GoogleFree::new(client, parallel)),
                 &texts,
+                batch,
             )
-            .await?
+            .await
         }
         Provider::Mlkit => {
             if !MLKIT_AVAILABLE {
@@ -145,27 +160,51 @@ async fn translate(
                 &namespace,
                 &PlainBackend::new(MlKit { app }),
                 &texts,
+                batch,
             )
-            .await?
+            .await
         }
     };
-    if added > 0 {
+    // 失敗しても, それまでに翻訳できた分は, キャッシュに入っているので, 保存する
+    let changed = match &result {
+        Ok((_, added)) => *added > 0,
+        Err(_) => true,
+    };
+    if changed {
         let json = state.cache.lock().map_err(|e| e.to_string())?.to_json();
         // キャッシュが書けなくても, 翻訳は返す
         let _ = std::fs::write(state.dir.join(CACHE_FILE), json);
     }
+    let (results, _) = result?;
 
     Ok(results)
 }
 
-/// バックエンドとキャッシュで翻訳する.
+/// バックエンドとキャッシュで翻訳する (`batch` 個ずつ, キャッシュに入れる).
 async fn translate_with<B: Backend>(
     state: &State<'_, AppState>,
     namespace: &str,
     backend: &B,
     texts: &[String],
+    batch: usize,
 ) -> Result<(Vec<String>, usize), String> {
-    translate::translate_with_cache(&state.cache, backend, namespace, texts).await
+    translate::translate_with_cache(&state.cache, backend, namespace, texts, batch).await
+}
+
+/// キャッシュにある翻訳を返す (通信しない. 今のサービスのキャッシュ. ない文章は, null).
+///
+/// 画面は, 翻訳を始める前に呼んで, 翻訳できている分を先に表示し, 残りだけを翻訳に渡す.
+#[tauri::command]
+fn lookup_cache(
+    state: State<'_, AppState>,
+    texts: Vec<String>,
+) -> Result<Vec<Option<String>>, String> {
+    let namespace = {
+        let settings = state.settings.lock().map_err(|e| e.to_string())?;
+        settings.provider.namespace(&settings.gemini_model)
+    };
+
+    translate::lookup_cache(&state.cache, &namespace, &texts)
 }
 
 /// 設定を返す (API キーそのものは、画面に返さない).
@@ -217,6 +256,7 @@ pub fn builder(site: Site) -> tauri::Builder<tauri::Wry> {
             fetch_page,
             fetch_json,
             translate,
+            lookup_cache,
             check_mlkit,
             get_settings,
             set_settings

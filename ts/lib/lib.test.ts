@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { extractPage } from "./extract";
 import { hashOf, isDocUrl, switchedUrl, withoutHash } from "./docUrl";
 import type { SiteProfile } from "./profile";
@@ -26,6 +26,7 @@ import {
   MAX_ITEMS,
   MLKIT_LIMITS,
   chunk,
+  noLookup,
   translatePage,
 } from "./translatePage";
 
@@ -377,6 +378,72 @@ describe("translatePage", () => {
     expect(partials[1].html).toContain("<p>Para 49</p>");
     expect(result.html).toContain("JA(Para 49)");
     expect(result.html).not.toContain("<p>Para 49</p>");
+  });
+
+  it("shows the cached translations first and sends only the rest", async () => {
+    const three = { ...page, html: "<p>One</p><p>Two</p><p>Three</p>" };
+    // タイトルと 1 つ目は, 翻訳がない (キャッシュは, 2 つ目と 3 つ目だけ)
+    const lookup = async (texts: string[]) =>
+      texts.map((text) => (text === "Two" || text === "Three" ? `C(${text})` : null));
+    const sent: string[][] = [];
+    const seen: number[] = [];
+    const partials: { title: string; html: string }[] = [];
+    const result = await translatePage(
+      three,
+      async (texts) => {
+        sent.push(texts);
+        return fake(texts);
+      },
+      ({ done }) => seen.push(done),
+      { aborted: false },
+      DEFAULT_LIMITS,
+      (partial) => partials.push(partial),
+      lookup,
+    );
+    expect(sent).toEqual([["Sample Topic", "One"]]);
+    // 続きから: 初めに, 翻訳済みの 2 つを数える
+    expect(seen).toEqual([2, 4]);
+    expect(partials).toHaveLength(1);
+    expect(partials[0].title).toBe("Sample Topic");
+    expect(partials[0].html).toContain("<p>One</p>");
+    expect(partials[0].html).toContain("C(Two)");
+    expect(result.title).toBe("JA(Sample Topic)");
+    expect(result.html).toContain("JA(One)");
+    expect(result.html).toContain("C(Three)");
+  });
+
+  it("does not send anything when everything is cached", async () => {
+    const send = vi.fn(fake);
+    const progress = vi.fn();
+    const result = await translatePage(
+      { ...page, html: "<p>Hello</p>" },
+      send,
+      progress,
+      { aborted: false },
+      DEFAULT_LIMITS,
+      () => undefined,
+      async (texts) => texts.map((text) => `C(${text})`),
+    );
+    expect(send).not.toHaveBeenCalled();
+    expect(progress).not.toHaveBeenCalled();
+    expect(result.title).toBe("C(Sample Topic)");
+    expect(result.html).toContain("C(Hello)");
+  });
+
+  it("sends everything when the lookup fails", async () => {
+    const send = vi.fn(fake);
+    const result = await translatePage(
+      { ...page, html: "<p>Hello</p>" },
+      send,
+      () => undefined,
+      { aborted: false },
+      DEFAULT_LIMITS,
+      () => undefined,
+      () => Promise.reject(new Error("no cache")),
+    );
+    expect(send).toHaveBeenCalledWith(["Sample Topic", "Hello"]);
+    expect(result.html).toContain("JA(Hello)");
+    expect(await noLookup(["a", "b"])).toEqual([null, null]);
   });
 
   it("stops when it is aborted", async () => {

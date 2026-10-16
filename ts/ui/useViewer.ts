@@ -236,6 +236,7 @@ export function useViewer(profile: SiteProfile): Viewer {
                 setEntry({ ...found });
               }
             },
+            api.lookupCache,
           );
           found.translated = translated;
           found.partial = undefined;

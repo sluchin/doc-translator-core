@@ -12,6 +12,8 @@ use doc_translator_core::translate::*;
 struct Fake {
     calls: Mutex<Vec<Vec<String>>>,
     wrong_count: bool,
+    /// この文章を渡されたら, 失敗する (断られたときの代わり).
+    fail_on: Option<&'static str>,
 }
 
 impl Fake {
@@ -19,6 +21,7 @@ impl Fake {
         Self {
             calls: Mutex::new(Vec::new()),
             wrong_count,
+            fail_on: None,
         }
     }
 }
@@ -29,12 +32,17 @@ impl Backend for Fake {
         texts: &[String],
     ) -> impl Future<Output = Result<Vec<String>, String>> + Send {
         self.calls.lock().unwrap().push(texts.to_vec());
-        let result = if self.wrong_count {
-            Vec::new()
+        let failed = self
+            .fail_on
+            .is_some_and(|fail| texts.iter().any(|text| text == fail));
+        let result = if failed {
+            Err("limited".to_string())
+        } else if self.wrong_count {
+            Ok(Vec::new())
         } else {
-            texts.iter().map(|text| format!("JA:{text}")).collect()
+            Ok(texts.iter().map(|text| format!("JA:{text}")).collect())
         };
-        async move { Ok(result) }
+        async move { result }
     }
 }
 
@@ -42,22 +50,64 @@ fn texts(items: &[&str]) -> Vec<String> {
     items.iter().map(|item| item.to_string()).collect()
 }
 
+/// 全部を 1 回でバックエンドに渡す.
+const ALL: usize = usize::MAX;
+
+#[tokio::test]
+async fn caches_each_batch_and_keeps_it_on_a_failure() {
+    let cache = Mutex::new(Cache::new(10));
+    let mut fake = Fake::new(false);
+    fake.fail_on = Some("c");
+
+    // 2 個ずつ渡す: 1 回目 (a, b) は翻訳できて, 2 回目 (c, d) で断られる
+    let error = translate_with_cache(&cache, &fake, "t", &texts(&["a", "b", "c", "d"]), 2)
+        .await
+        .unwrap_err();
+    assert_eq!(error, "limited");
+    assert_eq!(
+        lookup_cache(&cache, "t", &texts(&["a", "b", "c"])).unwrap(),
+        vec![Some("JA:a".to_string()), Some("JA:b".to_string()), None]
+    );
+
+    // やり直すと, 翻訳できなかった分だけを渡す (0 個ずつは, 1 個ずつとして扱う)
+    fake.fail_on = None;
+    let (results, added) = translate_with_cache(&cache, &fake, "t", &texts(&["a", "c", "d"]), 0)
+        .await
+        .unwrap();
+    assert_eq!(results, texts(&["JA:a", "JA:c", "JA:d"]));
+    assert_eq!(added, 2);
+    assert_eq!(
+        *fake.calls.lock().unwrap(),
+        vec![
+            texts(&["a", "b"]),
+            texts(&["c", "d"]),
+            texts(&["c"]),
+            texts(&["d"])
+        ]
+    );
+    // サービスが違えば, キャッシュも違う
+    assert_eq!(
+        lookup_cache(&cache, "u", &texts(&["a"])).unwrap(),
+        vec![None]
+    );
+}
+
 #[tokio::test]
 async fn translates_each_text_once_and_uses_the_cache() {
     let cache = Mutex::new(Cache::new(10));
     let fake = Fake::new(false);
 
-    let (first, added) = translate_with_cache(&cache, &fake, "t", &texts(&["a", "b", "a"]))
+    let (first, added) = translate_with_cache(&cache, &fake, "t", &texts(&["a", "b", "a"]), ALL)
         .await
         .unwrap();
     assert_eq!(first, texts(&["JA:a", "JA:b", "JA:a"]));
     assert_eq!(added, 2);
-    let (second, added) = translate_with_cache(&cache, &fake, "t", &texts(&["b", "c"]))
+    let (second, added) = translate_with_cache(&cache, &fake, "t", &texts(&["b", "c"]), ALL)
         .await
         .unwrap();
     assert_eq!(second, texts(&["JA:b", "JA:c"]));
     assert_eq!(added, 1);
-    let (third, added) = translate_with_cache(&cache, &fake, "t", &texts(&["a"]))
+    let (third, added) = translate_with_cache(&cache, &fake, "t", &texts(&["a"]), ALL)
         .await
         .unwrap();
 
@@ -71,7 +121,7 @@ async fn translates_each_text_once_and_uses_the_cache() {
 #[tokio::test]
 async fn rejects_a_different_number_of_results() {
     let cache = Mutex::new(Cache::new(10));
-    let error = translate_with_cache(&cache, &Fake::new(true), "t", &texts(&["a"]))
+    let error = translate_with_cache(&cache, &Fake::new(true), "t", &texts(&["a"]), ALL)
         .await
         .unwrap_err();
     assert!(error.contains("different number"));

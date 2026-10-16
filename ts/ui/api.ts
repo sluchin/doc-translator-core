@@ -48,6 +48,16 @@ export function translate(texts: string[]): Promise<string[]> {
   return invoke<string[]>("translate", { texts });
 }
 
+/**
+ * 翻訳済みの文章を, 今のサービスのキャッシュから探す (通信しない).
+ *
+ * @param texts 文章 (HTML の断片)
+ * @returns 翻訳 (同じ数, 同じ順. ない文章は null)
+ */
+export function lookupCache(texts: string[]): Promise<(string | null)[]> {
+  return invoke<(string | null)[]>("lookup_cache", { texts });
+}
+
 /** 翻訳に使うサービス. */
 export type Provider = "google" | "gemini" | "mlkit" | "googlefree";
 

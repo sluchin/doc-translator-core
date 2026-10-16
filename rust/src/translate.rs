@@ -142,14 +142,30 @@ pub fn cache_key(namespace: &str, text: &str) -> String {
         .collect()
 }
 
+/// キャッシュにある翻訳を返す (通信しない). キャッシュにない文章は, None.
+pub fn lookup_cache(
+    cache: &Mutex<Cache>,
+    namespace: &str,
+    texts: &[String],
+) -> Result<Vec<Option<String>>, String> {
+    let guard = cache.lock().map_err(|e| e.to_string())?;
+
+    Ok(texts
+        .iter()
+        .map(|text| guard.get(&cache_key(namespace, text)).cloned())
+        .collect())
+}
+
 /// キャッシュを使って翻訳する. キャッシュにある文章は, バックエンドに渡さない.
 ///
-/// 返すのは, 翻訳と, キャッシュに足した数.
+/// キャッシュにない文章は, `batch` 個ずつバックエンドに渡して, 翻訳できたらすぐにキャッシュに入れる
+/// (途中で断られても, それまでに翻訳できた分は, 捨てない). 返すのは, 翻訳と, キャッシュに足した数.
 pub async fn translate_with_cache<B: Backend>(
     cache: &Mutex<Cache>,
     backend: &B,
     namespace: &str,
     texts: &[String],
+    batch: usize,
 ) -> Result<(Vec<String>, usize), String> {
     let keys: Vec<String> = texts
         .iter()
@@ -165,13 +181,13 @@ pub async fn translate_with_cache<B: Backend>(
         }
     }
     let added = missing.len();
-    if !missing.is_empty() {
-        let translated = backend.translate(&missing).await?;
-        if translated.len() != missing.len() {
+    for part in missing.chunks(batch.max(1)) {
+        let translated = backend.translate(part).await?;
+        if translated.len() != part.len() {
             return Err("The translation service returned a different number of texts".to_string());
         }
         let mut guard = cache.lock().map_err(|e| e.to_string())?;
-        for (text, result) in missing.iter().zip(translated) {
+        for (text, result) in part.iter().zip(translated) {
             guard.insert(cache_key(namespace, text), result);
         }
     }

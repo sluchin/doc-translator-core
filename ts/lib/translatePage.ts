@@ -11,6 +11,14 @@ import { collectSegments, keepsStructure, markAtomic } from "./segments";
 /** 文章を翻訳する関数 (HTML の断片の一覧を受け取り, 同じ数の翻訳を同じ順で返す). */
 export type TranslateFn = (texts: string[]) => Promise<string[]>;
 
+/**
+ * 翻訳済みの文章を探す関数 (通信しない. 同じ数を同じ順で返し, 翻訳がない文章は null).
+ */
+export type LookupFn = (texts: string[]) => Promise<(string | null)[]>;
+
+/** 翻訳済みの文章がない (探さない) ときの {@link LookupFn}. */
+export const noLookup: LookupFn = async (texts) => texts.map(() => null);
+
 /** 1 回の翻訳の依頼の大きさの上限 (1 つの文章が超えるときは, それだけで 1 回). */
 export interface Limits {
   /** 文章の数. */
@@ -93,6 +101,9 @@ export function chunk(texts: string[], limits: Limits = DEFAULT_LIMITS): string[
  * 段落などの単位ごとに, 文中のコードに「翻訳しない」印を付けて翻訳に渡す. 同じ文章は 1 回だけ
  * 渡す. 翻訳の結果で、コードの印やリンクの数が変わったものは, 英語のまま残す.
  *
+ * 初めに `lookup` で, 翻訳済みの文章 (キャッシュ) を探して, あれば, 先に `onProgress` と `onPartial` に渡す.
+ * 翻訳に渡すのは, 残りの文章だけ (やり直したときは, 続きから翻訳する). 探せなかったときは, 全部を翻訳に渡す.
+ *
  * 上から順に翻訳し, 1 回の依頼が終わるたびに, そこまでの翻訳を `onPartial` に渡す (まだ翻訳していない
  * 文章は, 英語のまま). 全部が終わるのを待たずに, 先に翻訳した上のほうから読める.
  *
@@ -102,6 +113,7 @@ export function chunk(texts: string[], limits: Limits = DEFAULT_LIMITS): string[
  * @param signal 中止の指示 (aborted が true になったら, 次の依頼の前にやめる)
  * @param limits 1 回の依頼の大きさの上限
  * @param onPartial 途中までの翻訳を受け取る関数 (最後の依頼のあとは, 呼ばない. 戻り値が完成した翻訳)
+ * @param lookup 翻訳済みの文章を探す関数
  * @returns 翻訳したページ
  * @throws AbortedError 中止されたとき
  */
@@ -112,6 +124,7 @@ export async function translatePage(
   signal: { aborted: boolean } = { aborted: false },
   limits: Limits = DEFAULT_LIMITS,
   onPartial: (partial: TranslatedPage) => void = () => undefined,
+  lookup: LookupFn = noLookup,
 ): Promise<TranslatedPage> {
   const container = document.createElement("div");
   container.innerHTML = page.html;
@@ -121,7 +134,6 @@ export async function translatePage(
   const translations = new Map<string, string>();
   const applied = new Set<number>();
   let kept = 0;
-  let done = 0;
 
   /** 翻訳が届いた文章を, 本文に差し込む (差し込み済みのものは, 飛ばす). */
   const apply = (): TranslatedPage => {
@@ -138,13 +150,29 @@ export async function translatePage(
       }
     });
     return {
-      title: translations.get(page.title) as string,
+      // タイトルは, 翻訳が届くまで, 英語のまま (翻訳済みの文章だけを先に表示するとき)
+      title: translations.get(page.title) ?? page.title,
       html: sanitize(container.innerHTML),
       kept,
     };
   };
 
-  const parts = chunk(unique, limits);
+  // 翻訳済みの文章を先に差し込む (探せなくても, 翻訳は続ける)
+  const cached = await lookup(unique).catch(() => [] as (string | null)[]);
+  unique.forEach((text, at) => {
+    const hit = cached[at];
+    if (hit !== null && hit !== undefined) {
+      translations.set(text, hit);
+    }
+  });
+  const pending = unique.filter((text) => !translations.has(text));
+  let done = unique.length - pending.length;
+  if (done > 0 && pending.length > 0) {
+    onProgress({ done, total: unique.length });
+    onPartial(apply());
+  }
+
+  const parts = chunk(pending, limits);
   for (const [index, part] of parts.entries()) {
     if (signal.aborted) {
       throw new AbortedError();
