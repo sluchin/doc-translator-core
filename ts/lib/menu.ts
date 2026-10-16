@@ -9,8 +9,8 @@ import type { MenuItem } from "./profile";
 import { type TranslateFn, chunk } from "./translatePage";
 
 /**
- * `li` から, メニューの項目を作る (直接の子の `a` が, 名前と URL. 直接の子の `ul` が, 子の項目).
- * `a` がない項目 (ボタンだけのグループなど) の名前は, `ul` を除いた子の文字にする.
+ * `li` から, メニューの項目を作る (直接の子の `a` が, 名前と URL. この項目の中の, 一番外側の `ul` が, 子の項目 (間に `div` があってもよい).
+ * `a` がない項目 (ボタンだけのグループなど) の名前は, `ul` を含まない子の文字にする.
  *
  * @param li 項目の要素
  * @param base ページの URL
@@ -21,15 +21,15 @@ function itemFromLi(li: Element, base: string): MenuItem {
   const link = children.find((child) => child.tagName === "A");
   const href = link?.getAttribute("href");
   const own = Array.from(li.childNodes)
-    .filter((node) => !(node instanceof Element && node.tagName === "UL"))
+    .filter((node) => !(node instanceof Element && node.matches("ul, :has(ul)")))
     .map((node) => node.textContent)
     .join(" ");
   const title = ((link ? link.textContent : own) as string).replace(/\s+/g, " ").trim();
   return {
     title,
     url: href ? absoluteUrl(href, base) : undefined,
-    children: children
-      .filter((child) => child.tagName === "UL")
+    children: Array.from(li.querySelectorAll("ul"))
+      .filter((ul) => ul.parentElement?.closest("li") === li)
       .flatMap((ul) => itemsFromUl(ul, base)),
   };
 }

@@ -50,7 +50,7 @@ const PAGE = `<!doctype html><html><head><title>Sample Topic — Test Documentat
 <ul class="current"><li class="l1"><a href="../a.html">Alpha</a></li>
 <li class="l1 current"><a href="index.html">Beta</a><ul><li><a href="sub/x.html#part">Gamma  <b>X</b></a></li><li>Heading only</li></ul></li>
 <li><span></span></li>
-<li><button>Group  <i>Title</i></button><ul><li><a href="g.html">G1</a></li></ul></li></ul></div></nav>
+<li><button>Group  <i>Title</i></button><div><ul><li><a href="g.html">G1</a></li></ul></div></li></ul></div></nav>
 <div role="main"><section id="sample"><h1>Sample Topic<a class="headerlink" href="#sample">¶</a></h1>
 <p>Call <code>do_it()</code> and read <a href="other/page.html#part">the other page</a> now.</p>
 <div class="highlight"><pre>int x = 1; // keep</pre></div>
