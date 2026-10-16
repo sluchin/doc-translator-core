@@ -184,7 +184,7 @@ fn reads_the_error_message() {
 #[test]
 fn builds_the_gemini_request() {
     let body: serde_json::Value =
-        serde_json::from_str(&gemini_body(&texts(&["<p>Hi</p>"]))).unwrap();
+        serde_json::from_str(&gemini_body(&texts(&["<p>Hi</p>"]), true)).unwrap();
     assert_eq!(body["contents"][0]["parts"][0]["text"], "[\"<p>Hi</p>\"]");
     assert_eq!(
         body["generationConfig"]["responseMimeType"],
@@ -196,6 +196,22 @@ fn builds_the_gemini_request() {
             .unwrap()
             .contains("translate=\"no\"")
     );
+    // 指示文は、特定のサイトの名前を含まない (ほかのアプリも、共通のコードを使う)
+    assert!(
+        !body["systemInstruction"]["parts"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("Zephyr")
+    );
+    // 考える機能は、切る (翻訳が速い). 断るモデルのためには、設定なしの本文も作れる
+    assert_eq!(
+        body["generationConfig"]["thinkingConfig"]["thinkingBudget"],
+        0
+    );
+    let plain: serde_json::Value =
+        serde_json::from_str(&gemini_body(&texts(&["a"]), false)).unwrap();
+    assert!(plain["generationConfig"]["thinkingConfig"].is_null());
+    assert_eq!(plain["generationConfig"]["temperature"], 0.2);
     let backend = GeminiBackend::new(reqwest::Client::new(), "k".into(), "gemini-x".into());
     assert_eq!(
         backend.url(),
@@ -223,6 +239,34 @@ fn reads_the_gemini_response() {
     assert!(parse_gemini("not json", 1).is_err());
     let blocked = r#"{"promptFeedback":{"blockReason":"SAFETY"}}"#;
     assert!(parse_gemini(blocked, 1).unwrap_err().contains("SAFETY"));
+}
+
+#[test]
+fn splits_the_texts_into_small_batches_in_order() {
+    let all = texts(&["a", "b", "c", "d", "e"]);
+    assert_eq!(
+        split_batches(&all, 2),
+        vec![texts(&["a", "b"]), texts(&["c", "d"]), texts(&["e"])]
+    );
+    // 0 個ずつは、1 個ずつとして扱う. 空なら、依頼はない
+    assert_eq!(split_batches(&all, 0).len(), 5);
+    assert!(split_batches(&[], GEMINI_BATCH).is_empty());
+    // 40 個 (画面が 1 回に渡す数) は、同時に送る数の、1 回分に収まる
+    let forty: Vec<String> = (0..40).map(|i| i.to_string()).collect();
+    assert_eq!(split_batches(&forty, GEMINI_BATCH).len(), GEMINI_PARALLEL);
+}
+
+#[test]
+fn detects_the_model_that_rejects_the_thinking_setting() {
+    let message = r#"{"error":{"message":"Thinking budget 0 is invalid for this model"}}"#;
+    assert!(rejects_thinking(400, message));
+    assert!(rejects_thinking(400, "THINKING_CONFIG is not supported"));
+    // 別の 400 と、400 以外は、考える機能の設定のせいではない
+    assert!(!rejects_thinking(
+        400,
+        r#"{"error":{"message":"API key not valid"}}"#
+    ));
+    assert!(!rejects_thinking(429, message));
 }
 
 #[test]
