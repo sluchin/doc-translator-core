@@ -22,6 +22,24 @@ fn accepts_only_https_pages_of_the_documentation_host() {
 }
 
 #[test]
+fn allows_the_alternative_host_only_when_it_is_set() {
+    let site = Site {
+        host: HOST,
+        alt_host: Some("alt.example.com"),
+        user_agent: "test/0.1",
+    };
+    assert!(site.allows("https://docs.example.com/a"));
+    assert!(site.allows("https://alt.example.com/a"));
+    assert!(!site.allows("https://other.example.com/a"));
+    assert!(!site.allows("http://alt.example.com/a"));
+    let single = Site {
+        alt_host: None,
+        ..site
+    };
+    assert!(!single.allows("https://alt.example.com/a"));
+}
+
+#[test]
 fn checks_the_response() {
     let html = Kind::Html;
     assert!(check_response(200, Some("text/html; charset=utf-8"), Some(10), html).is_ok());
@@ -48,10 +66,11 @@ fn accepts_json_only_for_the_json_kind() {
 async fn refuses_other_hosts_without_a_request() {
     let site = Site {
         host: HOST,
+        alt_host: Some("alt.example.com"),
         user_agent: "test/0.1",
     };
     let client = build_client(site).unwrap();
-    let error = fetch_page(&client, HOST, "https://example.com/")
+    let error = fetch_page(&client, site, "https://example.com/")
         .await
         .unwrap_err();
     assert!(error.starts_with("Not a documentation page"));

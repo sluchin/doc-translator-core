@@ -49,6 +49,18 @@ export interface SiteProfile {
   readonly dropCodeLines?: RegExp;
   /** タイトルの末尾の, サイト名 (取り除く). */
   readonly titleSuffix: RegExp;
+  /**
+   * 同じパスの, もう 1 つのサイト (日本語のサイトと, 英語のサイトの切り替えなど). あれば, 切り替えのボタンが出る
+   * (Rust 側の `Site` の `alt_host` と同じにする).
+   */
+  readonly alt?: {
+    /** もう 1 つのサイトのホスト. */
+    readonly host: string;
+    /** 今のサイトから, もう 1 つのサイトへ移るボタンの名前. */
+    readonly toLabel: string;
+    /** もう 1 つのサイトから, 今のサイトへ戻るボタンの名前. */
+    readonly backLabel: string;
+  };
   /** サイトが日本語のとき true (翻訳しない. 原文の切り替えと設定のボタンも出さない). 既定は false. */
   readonly japanese?: boolean;
   /** メニュー (目次) の取り方 (なければ, メニューを出さない). */

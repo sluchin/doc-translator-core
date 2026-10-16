@@ -14,6 +14,8 @@ use url::Url;
 pub struct Site {
     /// 取得してよいホスト (これ以外へは, リダイレクトもしない).
     pub host: &'static str,
+    /// 同じパスで, もう 1 つ取得してよいホスト (日本語のサイトと, 英語のサイトの切り替えなど. なければ `None`).
+    pub alt_host: Option<&'static str>,
     /// サイトに名乗る User-Agent.
     pub user_agent: &'static str,
 }
@@ -34,15 +36,22 @@ pub fn is_doc_url(host: &str, url: &str) -> bool {
         .unwrap_or(false)
 }
 
+impl Site {
+    /// URL が, 取得してよいドキュメントのページか (ホストか, もう 1 つのホストに一致).
+    pub fn allows(&self, url: &str) -> bool {
+        is_doc_url(self.host, url) || self.alt_host.is_some_and(|alt| is_doc_url(alt, url))
+    }
+}
+
 /// 取得に使う HTTP クライアントを作る (リダイレクトは, ドキュメントのホストの中だけ).
 pub fn build_client(site: Site) -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
         .user_agent(site.user_agent)
         .timeout(TIMEOUT)
-        .redirect(Policy::custom(|attempt| {
+        .redirect(Policy::custom(move |attempt| {
             if attempt.previous().len() >= MAX_REDIRECTS {
                 attempt.error("too many redirects")
-            } else if is_doc_url(site.host, attempt.url().as_str()) {
+            } else if site.allows(attempt.url().as_str()) {
                 attempt.follow()
             } else {
                 attempt.error("redirected out of the documentation host")
@@ -62,18 +71,18 @@ pub enum Kind {
 }
 
 /// ページの HTML を取得する.
-pub async fn fetch_page(client: &reqwest::Client, host: &str, url: &str) -> Result<String, String> {
-    fetch_text(client, host, url, Kind::Html).await
+pub async fn fetch_page(client: &reqwest::Client, site: Site, url: &str) -> Result<String, String> {
+    fetch_text(client, site, url, Kind::Html).await
 }
 
 /// サイトのテキスト (HTML か JSON) を取得する (ホストが違えば, 通信しないで失敗する).
 pub async fn fetch_text(
     client: &reqwest::Client,
-    host: &str,
+    site: Site,
     url: &str,
     kind: Kind,
 ) -> Result<String, String> {
-    if !is_doc_url(host, url) {
+    if !site.allows(url) {
         return Err(format!("Not a documentation page: {url}"));
     }
     let response = client.get(url).send().await.map_err(|e| e.to_string())?;

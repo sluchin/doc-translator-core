@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from "vitest";
 import { extractPage } from "./extract";
-import { hashOf, isDocUrl, withoutHash } from "./docUrl";
+import { hashOf, isDocUrl, switchedUrl, withoutHash } from "./docUrl";
 import type { SiteProfile } from "./profile";
 import { EMPTY_NAV, back, canGoBack, canGoForward, current, forward, push } from "./history";
 import {
@@ -74,6 +74,23 @@ describe("docUrl", () => {
     expect(isDocUrl(`https://${HOST}.evil.example.com/`, PROFILE)).toBe(false);
     expect(isDocUrl("not a url", PROFILE)).toBe(false);
     expect(isDocUrl(`https://${HOST}/api/a.html`, PROFILE)).toBe(false);
+  });
+
+  it("accepts the alternative host only when the site has one, and switches between the hosts", () => {
+    const alt = { host: "alt.example.com", toLabel: "To alt", backLabel: "Back" };
+    const both = { ...PROFILE, alt };
+    expect(isDocUrl("https://alt.example.com/latest/a.html", both)).toBe(true);
+    expect(isDocUrl("https://alt.example.com/latest/a.html", PROFILE)).toBe(false);
+    expect(isDocUrl("https://alt.example.com/api/a.html", both)).toBe(false);
+    expect(switchedUrl(`https://${HOST}/latest/a.html#x`, both)).toBe(
+      "https://alt.example.com/latest/a.html#x",
+    );
+    expect(switchedUrl("https://alt.example.com/latest/a.html", both)).toBe(
+      `https://${HOST}/latest/a.html`,
+    );
+    expect(switchedUrl("https://other.example.com/a", both)).toBe("https://other.example.com/a");
+    expect(switchedUrl(`https://${HOST}/a`, PROFILE)).toBe(`https://${HOST}/a`);
+    expect(switchedUrl("not a url", both)).toBe("not a url");
   });
 
   it("removes and reads the fragment", () => {

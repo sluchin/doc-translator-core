@@ -68,13 +68,13 @@ const MLKIT_AVAILABLE: bool = cfg!(target_os = "android");
 /// ドキュメントのページの HTML を取得する.
 #[tauri::command]
 async fn fetch_page(state: State<'_, AppState>, url: String) -> Result<String, String> {
-    docs::fetch_page(&state.client, state.site.host, &url).await
+    docs::fetch_page(&state.client, state.site, &url).await
 }
 
 /// サイトの JSON ファイル (メニューなど) を取得する.
 #[tauri::command]
 async fn fetch_json(state: State<'_, AppState>, url: String) -> Result<String, String> {
-    docs::fetch_text(&state.client, state.site.host, &url, docs::Kind::Json).await
+    docs::fetch_text(&state.client, state.site, &url, docs::Kind::Json).await
 }
 
 /// ML Kit が動くかを確かめる (翻訳のモデルを取得して, 短い文章を翻訳する. 設定の画面から呼ぶ).

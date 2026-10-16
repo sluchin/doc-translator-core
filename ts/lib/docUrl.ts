@@ -13,16 +13,43 @@ import type { SiteProfile } from "./profile";
  * @param site サイトの設定 (ホストと, パスの先頭)
  * @returns https で, ホストが一致して, パスが先頭に合うなら true
  */
-export function isDocUrl(url: string, site: Pick<SiteProfile, "host" | "pathPrefix">): boolean {
+export function isDocUrl(
+  url: string,
+  site: Pick<SiteProfile, "host" | "pathPrefix" | "alt">,
+): boolean {
   try {
     const parsed = new URL(url);
     return (
       parsed.protocol === "https:" &&
-      parsed.hostname === site.host &&
+      (parsed.hostname === site.host || parsed.hostname === site.alt?.host) &&
       parsed.pathname.startsWith(site.pathPrefix)
     );
   } catch {
     return false;
+  }
+}
+
+/**
+ * ページの URL を, もう 1 つのサイトの同じパスの URL にする (今がもう 1 つのサイトなら, もとのサイトにする).
+ *
+ * @param url ページの URL
+ * @param site サイトの設定
+ * @returns 切り替えた URL (もう 1 つのサイトがないか, どちらのホストでもなければ, そのまま)
+ */
+export function switchedUrl(url: string, site: Pick<SiteProfile, "host" | "alt">): string {
+  const alt = site.alt?.host;
+  try {
+    const parsed = new URL(url);
+    if (alt !== undefined) {
+      if (parsed.hostname === site.host) {
+        parsed.hostname = alt;
+      } else if (parsed.hostname === alt) {
+        parsed.hostname = site.host;
+      }
+    }
+    return parsed.href;
+  } catch {
+    return url;
   }
 }
 

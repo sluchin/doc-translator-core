@@ -10,7 +10,7 @@ import { Doc } from "./Doc";
 import { Drawer } from "./Drawer";
 import { ScrollBar } from "./ScrollBar";
 import { SettingsDialog } from "./SettingsDialog";
-import { isDocUrl } from "../lib/docUrl";
+import { isDocUrl, switchedUrl } from "../lib/docUrl";
 import type { SiteProfile } from "../lib/profile";
 import { useViewer } from "./useViewer";
 
@@ -78,6 +78,13 @@ export default function App({ profile }: Props) {
           onKeyDown={(event) => event.key === "Enter" && submit()}
           onBlur={() => setAddress(undefined)}
         />
+        {profile.alt && (
+          <button onClick={() => viewer.open(switchedUrl(viewer.url, profile))}>
+            {new URL(viewer.url).hostname === profile.alt.host
+              ? profile.alt.backLabel
+              : profile.alt.toLabel}
+          </button>
+        )}
         {profile.japanese !== true && (
           <button onClick={viewer.toggleLang} aria-pressed={viewer.lang === "ja"}>
             {viewer.lang === "ja" ? "原文に戻す" : "日本語に翻訳"}
