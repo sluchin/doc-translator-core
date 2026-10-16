@@ -155,6 +155,16 @@ pub fn cache_key(namespace: &str, text: &str) -> String {
         .collect()
 }
 
+/// キャッシュを分ける名前に, 範囲 (ドキュメントの版など) を足す (範囲が空なら, そのまま).
+///
+/// 版ごとに, 別のキャッシュにする (版が変わったら, 前の版の訳を使わない).
+pub fn scoped_namespace(namespace: &str, scope: Option<&str>) -> String {
+    match scope.map(str::trim) {
+        Some(scope) if !scope.is_empty() => format!("{namespace}@{scope}"),
+        _ => namespace.to_string(),
+    }
+}
+
 /// キャッシュにある翻訳を返す (通信しない). キャッシュにない文章は, None.
 pub fn lookup_cache(
     cache: &Mutex<Cache>,

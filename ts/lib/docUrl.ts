@@ -15,15 +15,16 @@ import type { SiteProfile, SiteTab } from "./profile";
  */
 export function isDocUrl(
   url: string,
-  site: Pick<SiteProfile, "host" | "pathPrefix" | "alt" | "tabs">,
+  site: Pick<SiteProfile, "host" | "pathPrefix" | "alt" | "tabs" | "versions">,
 ): boolean {
   try {
     const parsed = new URL(url);
     const prefixes = site.tabs ? site.tabs.map((tab) => tab.pathPrefix) : [site.pathPrefix];
+    const path = pathWithoutVersion(parsed.pathname, site.versions?.pattern);
     return (
       parsed.protocol === "https:" &&
       (parsed.hostname === site.host || parsed.hostname === site.alt?.host) &&
-      prefixes.some((prefix) => parsed.pathname.startsWith(prefix))
+      prefixes.some((prefix) => path.startsWith(prefix))
     );
   } catch {
     return false;
@@ -31,15 +32,33 @@ export function isDocUrl(
 }
 
 /**
+ * パスから, 版を除く (版のあるサイトで, タブのパスの先頭と比べるため. 例: `/1.90.0/book/a.html` → `/book/a.html`).
+ *
+ * @param path URL のパス
+ * @param pattern パスの中の版に合わせる正規表現 (1 つ目のグループが版. なければ, そのまま)
+ * @returns 版を除いたパス (版が見つからなければ, そのまま)
+ */
+export function pathWithoutVersion(path: string, pattern?: RegExp): string {
+  const match = pattern?.exec(path);
+  if (match?.[1] === undefined) {
+    return path;
+  }
+  const start = match.index + match[0].indexOf(match[1]);
+  const end = start + match[1].length + (path[start + match[1].length] === "/" ? 1 : 0);
+  return path.slice(0, start) + path.slice(end);
+}
+
+/**
  * URL が, どのタブのドキュメントかを調べる (パスの先頭が, 一番長く合うタブ).
  *
  * @param url ページの URL
  * @param tabs タブの一覧
+ * @param pattern パスの中の版に合わせる正規表現 (版のあるサイト. 版を除いて比べる)
  * @returns タブの番号 (どれにも合わなければ 0. 読めない URL も 0)
  */
-export function tabIndexOf(url: string, tabs: readonly SiteTab[]): number {
+export function tabIndexOf(url: string, tabs: readonly SiteTab[], pattern?: RegExp): number {
   try {
-    const path = new URL(url).pathname;
+    const path = pathWithoutVersion(new URL(url).pathname, pattern);
     let best = 0;
     let length = -1;
     tabs.forEach((tab, index) => {

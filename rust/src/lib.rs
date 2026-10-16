@@ -92,11 +92,14 @@ async fn check_mlkit(app: tauri::AppHandle) -> Result<String, String> {
 }
 
 /// 文章 (HTML の断片) を日本語に翻訳する. 同じ文章は, キャッシュから返す.
+///
+/// `scope` (ドキュメントの版など) があれば, その範囲ごとに, 別のキャッシュにする.
 #[tauri::command]
 async fn translate(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
     texts: Vec<String>,
+    scope: Option<String>,
 ) -> Result<Vec<String>, String> {
     let (provider, key, model, parallel) = {
         let settings = state.settings.lock().map_err(|e| e.to_string())?;
@@ -112,8 +115,8 @@ async fn translate(
         )
     };
     let client = state.api_client.clone();
-    // キャッシュを分ける名前 (サービスと, Gemini のモデル)
-    let namespace = provider.namespace(&model);
+    // キャッシュを分ける名前 (サービスと, Gemini のモデルと, ドキュメントの版)
+    let namespace = translate::scoped_namespace(&provider.namespace(&model), scope.as_deref());
     // 無料の Google 翻訳は, 同時に送る数ずつキャッシュに入れる (断られても, 翻訳できた分を捨てない)
     let batch = if provider == Provider::Googlefree {
         free::clamp_parallel(parallel)
@@ -198,10 +201,14 @@ async fn translate_with<B: Backend>(
 fn lookup_cache(
     state: State<'_, AppState>,
     texts: Vec<String>,
+    scope: Option<String>,
 ) -> Result<Vec<Option<String>>, String> {
     let namespace = {
         let settings = state.settings.lock().map_err(|e| e.to_string())?;
-        settings.provider.namespace(&settings.gemini_model)
+        translate::scoped_namespace(
+            &settings.provider.namespace(&settings.gemini_model),
+            scope.as_deref(),
+        )
     };
 
     translate::lookup_cache(&state.cache, &namespace, &texts)

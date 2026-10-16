@@ -14,7 +14,7 @@ import {
 } from "../lib/menu";
 import type { MenuItem } from "../lib/profile";
 import type { Bookmark } from "../lib/saved";
-import * as api from "./api";
+import type { TranslateFn } from "../lib/translatePage";
 import type { Lang } from "./useViewer";
 
 /** メニューの画面の引数. */
@@ -37,6 +37,8 @@ interface Props {
   onHome: () => void;
   /** ページを開く. */
   onOpen: (url: string) => void;
+  /** メニューの名前を翻訳する関数 (今の版のキャッシュ). */
+  translate: TranslateFn;
 }
 
 /** 項目の画面の引数. */
@@ -122,6 +124,7 @@ export function Drawer({
   onRemoveBookmark,
   onHome,
   onOpen,
+  translate,
 }: Props) {
   const [tab, setTab] = useState<"menu" | "bookmarks">("menu");
   const [titles, setTitles] = useState<ReadonlyMap<string, string>>(new Map());
@@ -139,14 +142,14 @@ export function Drawer({
     // 翻訳を始める (外部への通信). 失敗したら、英語の名前のままにする
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setBusy(true);
-    translateTitles(missing, api.translate)
+    translateTitles(missing, translate)
       .then((map) => !cancelled && setTitles((old) => new Map([...old, ...map])))
       .catch(() => undefined)
       .finally(() => !cancelled && setBusy(false));
     return () => {
       cancelled = true;
     };
-  }, [open, lang, menu, titles]);
+  }, [open, lang, menu, titles, translate]);
 
   useEffect(() => {
     if (!open) {

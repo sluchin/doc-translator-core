@@ -6,7 +6,14 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { extractPage } from "./extract";
-import { hashOf, isDocUrl, switchedUrl, tabIndexOf, withoutHash } from "./docUrl";
+import {
+  hashOf,
+  isDocUrl,
+  pathWithoutVersion,
+  switchedUrl,
+  tabIndexOf,
+  withoutHash,
+} from "./docUrl";
 import type { SiteProfile } from "./profile";
 import { EMPTY_NAV, back, canGoBack, canGoForward, current, forward, push } from "./history";
 import {
@@ -19,6 +26,13 @@ import {
   withTitles,
 } from "./menu";
 import { sanitize } from "./sanitize";
+import {
+  parseVersions,
+  versionFromText,
+  versionOf,
+  withCurrentVersion,
+  withVersion,
+} from "./version";
 import { collectSegments, keepsStructure, markAtomic } from "./segments";
 import {
   AbortedError,
@@ -120,6 +134,100 @@ describe("docUrl", () => {
     expect(hashOf(`${HOME_URL}#a%20b`)).toBe("a b");
     expect(hashOf(HOME_URL)).toBe("");
     expect(hashOf("not a url")).toBe("");
+  });
+});
+
+describe("version", () => {
+  const PATTERN = /^\/([^/]+)\//;
+  /** 作り物の, Read the Docs 風の版の一覧. */
+  const LIST = `<div class="rst-other-versions"><dl><dt>Versions</dt>
+<dd><a href="/">latest</a></dd><dd><a href="/2.0.0/">2.0.0</a></dd>
+<dd><a href="/1.0.0/">1.0.0   (LTS)</a></dd><dd><a href="/2.0.0/">again</a></dd><dd><a>none</a></dd></dl>
+<dl><dt>Downloads</dt><dd><a href="/latest/doc.pdf">PDF</a></dd></dl></div>`;
+
+  it("reads and replaces the version in the path", () => {
+    expect(versionOf(`https://${HOST}/2.0.0/kernel/index.html`, PATTERN)).toBe("2.0.0");
+    expect(versionOf(`https://${HOST}/`, PATTERN)).toBeUndefined();
+    expect(versionOf("not a url", PATTERN)).toBeUndefined();
+    expect(withVersion(`https://${HOST}/latest/kernel/a.html#x`, PATTERN, "1.0.0")).toBe(
+      `https://${HOST}/1.0.0/kernel/a.html#x`,
+    );
+    // グループが先頭でない正規表現でも, グループの位置だけを替える
+    expect(withVersion(`https://${HOST}/docs/v1/a.html`, /^\/docs\/([^/]+)\//, "v2")).toBe(
+      `https://${HOST}/docs/v2/a.html`,
+    );
+    expect(withVersion(`https://${HOST}/`, PATTERN, "1.0.0")).toBe(`https://${HOST}/`);
+    expect(withVersion("not a url", PATTERN, "1.0.0")).toBe("not a url");
+  });
+
+  it("reads the version list of the page without duplicates", () => {
+    const doc = new DOMParser().parseFromString(LIST, "text/html");
+    const choices = parseVersions(
+      doc,
+      ".rst-other-versions dl:first-of-type a",
+      PATTERN,
+      `https://${HOST}/latest/a.html`,
+    );
+    // `/` (版のない URL) と, 同じ版の 2 つ目と, リンクのない項目は除く
+    expect(choices).toEqual([
+      { version: "2.0.0", label: "2.0.0" },
+      { version: "1.0.0", label: "1.0.0 (LTS)" },
+    ]);
+  });
+
+  it("adds the current version when the list does not have it", () => {
+    const list = [{ version: "2.0.0", label: "2.0.0" }];
+    expect(withCurrentVersion(list, "2.0.0")).toBe(list);
+    expect(withCurrentVersion(list, undefined)).toBe(list);
+    expect(withCurrentVersion(list, "latest")).toEqual([
+      { version: "latest", label: "latest" },
+      ...list,
+    ]);
+  });
+
+  it("reads the version from the text of a file", () => {
+    const pattern = /Latest release:[\s\S]*?(\d+\.\d+\.\d+)/;
+    expect(
+      versionFromText("<p data-x=\"Latest release: <a href='new2420.html'>2.4.21</a>\">", pattern),
+    ).toBe("2.4.21");
+    expect(versionFromText("<p>no version</p>", pattern)).toBeUndefined();
+  });
+
+  it("removes the version from the path to compare it with the tabs", () => {
+    expect(pathWithoutVersion("/1.90.0/book/a.html", PATTERN)).toBe("/book/a.html");
+    expect(pathWithoutVersion("/1.90.0", /^\/([^/]+)/)).toBe("/");
+    expect(pathWithoutVersion("/", PATTERN)).toBe("/");
+    expect(pathWithoutVersion("/book/a.html")).toBe("/book/a.html");
+    const tabs = [
+      { label: "A", pathPrefix: "/book/", homeUrl: `https://${HOST}/1.0.0/book/index.html` },
+      { label: "B", pathPrefix: "/nomicon/", homeUrl: `https://${HOST}/1.0.0/nomicon/index.html` },
+    ];
+    const site = {
+      ...PROFILE,
+      pathPrefix: "/",
+      tabs,
+      versions: { pattern: PATTERN },
+    };
+    expect(isDocUrl(`https://${HOST}/1.90.0/nomicon/a.html`, site)).toBe(true);
+    expect(isDocUrl(`https://${HOST}/1.90.0/std/a.html`, site)).toBe(false);
+    expect(tabIndexOf(`https://${HOST}/1.90.0/nomicon/a.html`, tabs, PATTERN)).toBe(1);
+    expect(tabIndexOf(`https://${HOST}/1.90.0/nomicon/a.html`, tabs)).toBe(0);
+  });
+
+  it("extracts the version list only when the site has versions", () => {
+    const html = `<html><head><title>T</title></head><body>${LIST}<main><p>x</p></main></body></html>`;
+    const versioned = {
+      ...PROFILE,
+      versions: { selector: ".rst-other-versions dl:first-of-type a", pattern: PATTERN },
+    };
+    expect(extractPage(html, `https://${HOST}/2.0.0/a.html`, versioned).versions).toHaveLength(2);
+    expect(extractPage(html, `https://${HOST}/2.0.0/a.html`, PROFILE).versions).toEqual([]);
+    // 版の一覧を、ページからではなく、別のファイルから作るサイト
+    const listed = {
+      ...PROFILE,
+      versions: { pattern: PATTERN, list: { url: "https://a/v", parse: () => [] } },
+    };
+    expect(extractPage(html, `https://${HOST}/2.0.0/a.html`, listed).versions).toEqual([]);
   });
 });
 

@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import type { VersionChoice } from "./version";
+
 /** メニュー (目次) の 1 つの項目. */
 export interface MenuItem {
   /** 表示する名前. */
@@ -84,6 +86,33 @@ export interface SiteProfile {
     readonly toLabel: string;
     /** もう 1 つのサイトから, 今のサイトへ戻るボタンの名前. */
     readonly backLabel: string;
+  };
+  /**
+   * ドキュメントの版 (URL のパスに, 版の名前がある. 例: `/4.4.0/`). あれば, 画面で版を選べて,
+   * 翻訳のキャッシュも, 版ごとに分ける.
+   */
+  readonly versions?: {
+    /** パスに合わせる正規表現 (1 つ目のグループが版. 例: `/^\/([^/]+)\//`). */
+    readonly pattern: RegExp;
+    /** ページの中の, 版の一覧のリンクの CSS セレクタ (ページに一覧があるサイト). */
+    readonly selector?: string;
+    /** 版の一覧を作るファイル (ホストの中. ページに一覧がないサイト). 起動のときに 1 回だけ取得する. */
+    readonly list?: {
+      /** ファイルの URL. */
+      readonly url: string;
+      /** ファイルの中身から, 版の選択肢を作る. */
+      readonly parse: (text: string) => VersionChoice[];
+    };
+  };
+  /**
+   * URL に版がないサイトで, 今の版を読み取るファイル (ホストの中). あれば, 起動のときに 1 回だけ取得して,
+   * 翻訳のキャッシュを, 版ごとに分ける (版は選べない. 読めなければ, 分けない).
+   */
+  readonly versionSource?: {
+    /** ファイルの URL. */
+    readonly url: string;
+    /** 中身に合わせる正規表現 (1 つ目のグループが版). */
+    readonly pattern: RegExp;
   };
   /** サイトが日本語のとき true (翻訳しない. 原文の切り替えと設定のボタンも出さない). 既定は false. */
   readonly japanese?: boolean;

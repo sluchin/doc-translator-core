@@ -78,6 +78,20 @@ export default function App({ profile }: Props) {
           onKeyDown={(event) => event.key === "Enter" && submit()}
           onBlur={() => setAddress(undefined)}
         />
+        {viewer.versions.length > 0 && (
+          <select
+            className="version"
+            aria-label="版"
+            value={viewer.version}
+            onChange={(event) => viewer.selectVersion(event.target.value)}
+          >
+            {viewer.versions.map((choice) => (
+              <option key={choice.version} value={choice.version}>
+                {choice.label}
+              </option>
+            ))}
+          </select>
+        )}
         {profile.alt && (
           <button onClick={() => viewer.open(switchedUrl(viewer.url, profile))}>
             {new URL(viewer.url).hostname === profile.alt.host
@@ -166,6 +180,7 @@ export default function App({ profile }: Props) {
         onRemoveBookmark={viewer.removeBookmark}
         onHome={viewer.home}
         onOpen={viewer.open}
+        translate={viewer.translate}
       />
       {settings && <SettingsDialog onClose={() => setSettings(false)} onSaved={viewer.retry} />}
     </div>

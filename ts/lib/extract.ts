@@ -8,6 +8,7 @@ import { absoluteUrl } from "./docUrl";
 import { parseHtmlMenu } from "./menu";
 import type { MenuItem, SiteProfile } from "./profile";
 import { sanitize } from "./sanitize";
+import { type VersionChoice, parseVersions } from "./version";
 
 /** 取り出したページ. */
 export interface DocPage {
@@ -19,6 +20,8 @@ export interface DocPage {
   readonly html: string;
   /** ページの中のメニュー (プロファイルが HTML のメニューを指すときだけ. なければ空). */
   readonly menu: readonly MenuItem[];
+  /** ページの中の, 版の一覧 (プロファイルに版の設定があるときだけ. なければ空). */
+  readonly versions: readonly VersionChoice[];
 }
 
 /** 本文から取り除く要素 (スクリプトなど. サイトごとの分は, プロファイルで足す). */
@@ -71,5 +74,9 @@ export function extractPage(html: string, url: string, profile: SiteProfile): Do
   const heading = content.querySelector("h1")?.textContent ?? "";
   const title = doc.title.replace(profile.titleSuffix, "").trim() || heading;
 
-  return { url, title, html: sanitize(content.innerHTML), menu };
+  const versions = profile.versions?.selector
+    ? parseVersions(doc, profile.versions.selector, profile.versions.pattern, url)
+    : [];
+
+  return { url, title, html: sanitize(content.innerHTML), menu, versions };
 }

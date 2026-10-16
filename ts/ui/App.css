@@ -114,6 +114,16 @@ input {
   }
 }
 
+/* 版の選択 */
+.toolbar .version {
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+  padding: 4px 6px;
+}
+
 /* タブ: 同じホストの、別のドキュメントを切り替える */
 .tabs {
   display: flex;

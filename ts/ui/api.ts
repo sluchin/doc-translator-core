@@ -42,20 +42,22 @@ export function checkMlkit(): Promise<string> {
  * 文章 (HTML の断片) を、Rust 側で日本語に翻訳する.
  *
  * @param texts 文章
+ * @param scope キャッシュを分ける範囲 (ドキュメントの版. なければ、分けない)
  * @returns 翻訳 (同じ数、同じ順)
  */
-export function translate(texts: string[]): Promise<string[]> {
-  return invoke<string[]>("translate", { texts });
+export function translate(texts: string[], scope?: string): Promise<string[]> {
+  return invoke<string[]>("translate", { texts, scope });
 }
 
 /**
  * 翻訳済みの文章を, 今のサービスのキャッシュから探す (通信しない).
  *
  * @param texts 文章 (HTML の断片)
+ * @param scope キャッシュを分ける範囲 (ドキュメントの版. なければ、分けない)
  * @returns 翻訳 (同じ数, 同じ順. ない文章は null)
  */
-export function lookupCache(texts: string[]): Promise<(string | null)[]> {
-  return invoke<(string | null)[]>("lookup_cache", { texts });
+export function lookupCache(texts: string[], scope?: string): Promise<(string | null)[]> {
+  return invoke<(string | null)[]>("lookup_cache", { texts, scope });
 }
 
 /** 翻訳に使うサービス. */

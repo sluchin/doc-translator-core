@@ -20,6 +20,13 @@ import {
   push,
 } from "../lib/history";
 import { parseHtmlMenu } from "../lib/menu";
+import {
+  type VersionChoice,
+  versionFromText,
+  versionOf,
+  withCurrentVersion,
+  withVersion,
+} from "../lib/version";
 import { type Metrics, type Position, screenPosition, scrollRatio } from "../lib/progress";
 import {
   type Bookmark,
@@ -37,6 +44,7 @@ import {
   DEFAULT_LIMITS,
   MLKIT_LIMITS,
   type Progress,
+  type TranslateFn,
   type TranslatedPage,
   translatePage,
 } from "../lib/translatePage";
@@ -104,6 +112,14 @@ export interface Viewer {
   hasMenu: boolean;
   /** タブを切り替える (そのタブで最後に開いたページ. なければ、最初のページ). */
   selectTab: (index: number) => void;
+  /** 選べるドキュメントの版 (版のないサイトでは空). */
+  versions: readonly VersionChoice[];
+  /** 今のページの版 (版のないサイトでは undefined). */
+  version?: string;
+  /** 版を替える (同じパスの、別の版のページを開く). */
+  selectVersion: (version: string) => void;
+  /** 今の版のキャッシュで翻訳する関数 (メニューの名前の翻訳に使う). */
+  translate: TranslateFn;
   /** 表示している本文のページの URL (フラグメントなし. 取得が終わるまでは、前のページ). */
   docUrl: string;
   /** 開いたときに戻す、読んだ位置 (0 から 1. 覚えていなければ undefined). */
@@ -174,6 +190,8 @@ export function useViewer(profile: SiteProfile): Viewer {
   const [needsKey, setNeedsKey] = useState(false);
   const [anchor, setAnchor] = useState("");
   const [htmlMenu, setHtmlMenu] = useState<readonly MenuItem[]>([]);
+  // ページから読んだ、版の一覧 (一覧のないページでは、前の一覧のまま)
+  const [versionList, setVersionList] = useState<readonly VersionChoice[]>([]);
   // 別のファイルから読んだメニュー (ファイルの URL ごと)
   const [fileMenus, setFileMenus] = useState<Record<string, readonly MenuItem[]>>({});
   // タブごとに、最後に開いたページ
@@ -200,6 +218,37 @@ export function useViewer(profile: SiteProfile): Viewer {
     }
   }, [persist]);
   const job = useRef({ aborted: false });
+
+  // URL に版がないサイトの、今の版 (起動のときに 1 回だけ読む. 読めなければ undefined)
+  const autoVersion = useRef<Promise<string | undefined>>(undefined);
+  const [autoVersionValue, setAutoVersionValue] = useState<string>();
+  const loadAutoVersion = useCallback((): Promise<string | undefined> => {
+    const source = profile.versionSource;
+    if (source === undefined) {
+      return Promise.resolve(undefined);
+    }
+    autoVersion.current ??= api
+      .fetchPage(source.url)
+      .then((text) => versionFromText(text, source.pattern))
+      .catch(() => undefined);
+    return autoVersion.current;
+  }, [profile]);
+
+  useEffect(() => {
+    void loadAutoVersion().then(setAutoVersionValue);
+  }, [loadAutoVersion]);
+
+  useEffect(() => {
+    const list = profile.versions?.list;
+    if (list === undefined) {
+      return;
+    }
+    // 版の一覧のファイルを取得する (失敗しても、今の版だけが出る)
+    api
+      .fetchPage(list.url)
+      .then((text) => setVersionList(list.parse(text)))
+      .catch(() => undefined);
+  }, [profile]);
 
   const show = useCallback(
     async (url: string, language: Lang) => {
@@ -228,6 +277,9 @@ export function useViewer(profile: SiteProfile): Viewer {
         if (found.page.menu.length > 0) {
           setHtmlMenu(found.page.menu);
         }
+        if (found.page.versions.length > 0) {
+          setVersionList(found.page.versions);
+        }
         setLoading(false);
         if (language === "ja" && !found.translated && profile.japanese !== true) {
           found.partial = undefined;
@@ -235,9 +287,13 @@ export function useViewer(profile: SiteProfile): Viewer {
           const { provider } = await api.getSettings();
           const limits =
             provider === "google" || provider === "gemini" ? DEFAULT_LIMITS : MLKIT_LIMITS;
+          // 版のあるサイトは、版ごとに、別のキャッシュにする (URL に版がないサイトは、読み取った今の版)
+          const scope = profile.versions
+            ? versionOf(key, profile.versions.pattern)
+            : await loadAutoVersion();
           const translated = await translatePage(
             found.page,
-            api.translate,
+            (texts) => api.translate(texts, scope),
             setProgress,
             signal,
             limits,
@@ -248,7 +304,7 @@ export function useViewer(profile: SiteProfile): Viewer {
                 setEntry({ ...found });
               }
             },
-            api.lookupCache,
+            (texts) => api.lookupCache(texts, scope),
           );
           found.translated = translated;
           found.partial = undefined;
@@ -272,7 +328,7 @@ export function useViewer(profile: SiteProfile): Viewer {
         }
       }
     },
-    [profile, flush, persist],
+    [profile, flush, persist, loadAutoVersion],
   );
 
   useEffect(() => {
@@ -291,17 +347,31 @@ export function useViewer(profile: SiteProfile): Viewer {
     };
   }, [flush]);
 
+  const url = current(nav) ?? profile.homeUrl;
+  const versionPattern = profile.versions?.pattern;
+  const version = versionPattern ? versionOf(url, versionPattern) : undefined;
   const tabs = profile.tabs ?? [];
-  const tab = tabIndexOf(current(nav) ?? profile.homeUrl, tabs);
+  const tab = tabIndexOf(url, tabs, versionPattern);
   const source: MenuSource | undefined = tabs.length > 0 ? tabs[tab]?.menu : profile.menu;
-  const sourceUrl = source && source.type !== "html" ? source.url : undefined;
+  // 版のあるサイトは、今の版のメニューのファイルを読む (メニューのリンクも、今の版になる)
+  const sourceUrl =
+    source && source.type !== "html"
+      ? versionPattern && version !== undefined
+        ? withVersion(source.url, versionPattern, version)
+        : source.url
+      : undefined;
 
   useEffect(() => {
-    if (source === undefined || source.type === "html" || fileMenus[source.url] !== undefined) {
+    if (
+      source === undefined ||
+      source.type === "html" ||
+      sourceUrl === undefined ||
+      fileMenus[sourceUrl] !== undefined
+    ) {
       return;
     }
     // メニューのファイルを取得する (失敗しても、メニューが出ないだけ)
-    const { url } = source;
+    const url = sourceUrl;
     const fetched =
       source.type === "json"
         ? api.fetchJson(url).then((text) => source.parse(JSON.parse(text) as unknown, url))
@@ -355,7 +425,6 @@ export function useViewer(profile: SiteProfile): Viewer {
     [docUrl, flush, loaded],
   );
 
-  const url = current(nav) ?? profile.homeUrl;
   const translation = lang === "ja" ? (entry?.translated ?? entry?.partial) : undefined;
   const title = (lang === "ja" && translation?.title) || entry?.page.title || url;
   const changeBookmarks = (next: readonly Bookmark[]) => {
@@ -363,6 +432,11 @@ export function useViewer(profile: SiteProfile): Viewer {
     setBookmarks(next);
   };
   const menu = sourceUrl !== undefined ? (fileMenus[sourceUrl] ?? []) : htmlMenu;
+  const scopeHere = version ?? autoVersionValue;
+  const translateHere = useCallback<TranslateFn>(
+    (texts) => api.translate(texts, scopeHere),
+    [scopeHere],
+  );
 
   useEffect(() => {
     // タブごとに、最後に開いたページを覚える (タブを切り替えて、戻ったとき)
@@ -384,10 +458,24 @@ export function useViewer(profile: SiteProfile): Viewer {
     tabs: tabs.map((t) => t.label),
     tab,
     hasMenu: source !== undefined,
+    versions: versionPattern ? withCurrentVersion(versionList, version) : [],
+    version,
+    selectVersion: (next) => {
+      if (versionPattern && next !== version) {
+        open(withVersion(url, versionPattern, next));
+      }
+    },
+    translate: translateHere,
     selectTab: (index) => {
       const target = tabs[index];
       if (target !== undefined && index !== tab) {
-        open(tabUrls.current[index] ?? target.homeUrl);
+        const next = tabUrls.current[index] ?? target.homeUrl;
+        // 版のあるサイトは、今の版のまま、タブを切り替える
+        open(
+          versionPattern && version !== undefined
+            ? withVersion(next, versionPattern, version)
+            : next,
+        );
       }
     },
     docUrl,
@@ -402,7 +490,15 @@ export function useViewer(profile: SiteProfile): Viewer {
     open,
     goBack: () => move(back(nav)),
     goForward: () => move(forward(nav)),
-    home: () => open(tabs[tab]?.homeUrl ?? profile.homeUrl),
+    home: () => {
+      const homeUrl = tabs[tab]?.homeUrl ?? profile.homeUrl;
+      // 版のあるサイトは、今の版のトップ
+      open(
+        versionPattern && version !== undefined
+          ? withVersion(homeUrl, versionPattern, version)
+          : homeUrl,
+      );
+    },
     setScroll,
     toggleBookmark: () => changeBookmarks(toggleBookmark(bookmarks, withoutHash(url), title)),
     removeBookmark: (target) => changeBookmarks(bookmarks.filter((b) => b.url !== target)),

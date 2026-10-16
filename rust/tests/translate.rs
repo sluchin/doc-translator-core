@@ -263,6 +263,22 @@ fn splits_the_texts_into_small_batches_in_order() {
 }
 
 #[test]
+fn separates_the_cache_by_the_scope() {
+    assert_eq!(
+        scoped_namespace("gemini:m", Some("4.4.0")),
+        "gemini:m@4.4.0"
+    );
+    assert_eq!(scoped_namespace("google", Some(" 4.3.0 ")), "google@4.3.0");
+    // 範囲がなければ (版のないサイト), 今までと同じ名前 (キャッシュを使い続ける)
+    assert_eq!(scoped_namespace("google", None), "google");
+    assert_eq!(scoped_namespace("google", Some("  ")), "google");
+    assert_ne!(
+        cache_key(&scoped_namespace("g", Some("4.4.0")), "a"),
+        cache_key(&scoped_namespace("g", Some("4.3.0")), "a")
+    );
+}
+
+#[test]
 fn skips_the_blank_texts_and_puts_the_translations_back() {
     let all = texts(&["a", " ", "b", "", "c"]);
     let (indexes, sendable) = split_blank(&all);
