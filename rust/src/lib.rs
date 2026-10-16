@@ -15,6 +15,7 @@ pub mod translate;
 
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use tauri::{Manager, State};
 
@@ -27,6 +28,9 @@ use translate::{Backend, Cache, GeminiBackend, GoogleBackend};
 /// キャッシュのファイルの名前.
 const CACHE_FILE: &str = "translation-cache.json";
 
+/// キャッシュを保存するまで待つ時間 (続けて翻訳したときは, まとめて 1 回だけ書く).
+const SAVE_DELAY: std::time::Duration = std::time::Duration::from_secs(2);
+
 /// アプリの状態.
 struct AppState {
     /// 設定と翻訳のキャッシュを保存するディレクトリ.
@@ -35,6 +39,8 @@ struct AppState {
     site: Site,
     settings: Mutex<Settings>,
     cache: Mutex<Cache>,
+    /// キャッシュの保存を, 待っているか (待っている間は, 新しく予約しない).
+    save_pending: AtomicBool,
     /// ページの取得に使う HTTP クライアント (リダイレクトは, ドキュメントのホストの中だけ).
     client: reqwest::Client,
     /// 翻訳の API に使う HTTP クライアント (リダイレクトは, たどらない).
@@ -161,7 +167,7 @@ async fn translate(
             translate_with(
                 &state,
                 &namespace,
-                &PlainBackend::new(MlKit { app }),
+                &PlainBackend::new(MlKit { app: app.clone() }),
                 &texts,
                 batch,
             )
@@ -174,13 +180,38 @@ async fn translate(
         Err(_) => true,
     };
     if changed {
-        let json = state.cache.lock().map_err(|e| e.to_string())?.to_json();
-        // キャッシュが書けなくても, 翻訳は返す
-        let _ = std::fs::write(state.dir.join(CACHE_FILE), json);
+        schedule_save(&app);
     }
     let (results, _) = result?;
 
     Ok(results)
+}
+
+/// キャッシュの保存を予約する ([`SAVE_DELAY`] のあとに, 1 回だけ書く).
+///
+/// 依頼のたびに, キャッシュ全体 (数 MB になる) を書き直すと, 遅くなる. 続けて翻訳したときは, まとめて書く.
+/// ロックの中では写しだけを作り, JSON にして書くのは, 別のスレッドで行う (翻訳を止めない).
+/// キャッシュが書けなくても, 翻訳は続ける.
+fn schedule_save(app: &tauri::AppHandle) {
+    let state = app.state::<AppState>();
+    if state.save_pending.swap(true, Ordering::AcqRel) {
+        return;
+    }
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(SAVE_DELAY).await;
+        let state = app.state::<AppState>();
+        // 写しを作る前に, 予約を外す (書いている間に増えた分は, 次の予約で書く)
+        state.save_pending.store(false, Ordering::Release);
+        let Ok(snapshot) = state.cache.lock().map(|cache| cache.snapshot()) else {
+            return;
+        };
+        let path = state.dir.join(CACHE_FILE);
+        let _ = tokio::task::spawn_blocking(move || {
+            std::fs::write(path, translate::entries_to_json(&snapshot))
+        })
+        .await;
+    });
 }
 
 /// バックエンドとキャッシュで翻訳する (`batch` 個ずつ, キャッシュに入れる).
@@ -252,6 +283,7 @@ pub fn builder(site: Site) -> tauri::Builder<tauri::Wry> {
             app.manage(AppState {
                 settings: Mutex::new(Settings::load(&dir)),
                 cache: Mutex::new(cache),
+                save_pending: AtomicBool::new(false),
                 client: docs::build_client(site)?,
                 api_client: docs::build_api_client(site)?,
                 site,

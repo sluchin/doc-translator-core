@@ -25,10 +25,18 @@ export interface Limits {
   readonly items: number;
   /** 文字数. */
   readonly chars: number;
+  /** 同時に送る依頼の数 (既定は 1. 順に 1 つずつ送る). */
+  readonly parallel?: number;
 }
 
 /** 既定の上限 (クラウドの翻訳サービス). */
 export const DEFAULT_LIMITS: Limits = { items: 40, chars: 8000 };
+
+/** Google Cloud Translation の上限 (速く, 断られにくいので, 3 つまで同時に送る). */
+export const GOOGLE_LIMITS: Limits = { ...DEFAULT_LIMITS, parallel: 3 };
+
+/** Gemini の上限 (Rust の側でも, 1 つの依頼を分けて同時に送るので, 2 つまで). */
+export const GEMINI_LIMITS: Limits = { ...DEFAULT_LIMITS, parallel: 2 };
 
 /** 端末の中で翻訳する (ML Kit) ときの上限. 小さくして、経過が、こまめに進むようにする. */
 export const MLKIT_LIMITS: Limits = { items: 10, chars: 2000 };
@@ -173,19 +181,35 @@ export async function translatePage(
     onPartial(apply());
   }
 
+  // 上から順に, `limits.parallel` 個まで, 同時に送る (1 つ終わるたびに, 次を送る)
   const parts = chunk(pending, limits);
-  for (const [index, part] of parts.entries()) {
-    if (signal.aborted) {
-      throw new AbortedError();
+  let next = 0;
+  let failed = false;
+  const worker = async (): Promise<void> => {
+    while (next < parts.length && !failed) {
+      if (signal.aborted) {
+        throw new AbortedError();
+      }
+      const part = parts[next];
+      next += 1;
+      try {
+        const results = await translate(part);
+        part.forEach((text, at) => translations.set(text, results[at] ?? text));
+      } catch (error) {
+        // ほかの依頼が終わっても, 途中の翻訳を渡さない (失敗を, そのまま伝える)
+        failed = true;
+        throw error;
+      }
+      done += part.length;
+      onProgress({ done, total: unique.length });
+      if (done < unique.length && !failed) {
+        onPartial(apply());
+      }
     }
-    const results = await translate(part);
-    part.forEach((text, at) => translations.set(text, results[at] ?? text));
-    done += part.length;
-    onProgress({ done, total: unique.length });
-    if (index < parts.length - 1) {
-      onPartial(apply());
-    }
-  }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(Math.max(1, limits.parallel ?? 1), parts.length) }, worker),
+  );
 
   return apply();
 }

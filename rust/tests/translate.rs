@@ -128,6 +128,24 @@ async fn rejects_a_different_number_of_results() {
 }
 
 #[test]
+fn makes_the_json_from_the_snapshot_in_the_old_order() {
+    let mut cache = Cache::new(10);
+    cache.insert("b".into(), "2".into());
+    cache.insert("a".into(), "1".into());
+    let snapshot = cache.snapshot();
+    assert_eq!(
+        snapshot,
+        vec![
+            ("b".to_string(), "2".to_string()),
+            ("a".to_string(), "1".to_string())
+        ]
+    );
+    // 写しから作った JSON は, キャッシュから直接作ったものと同じ
+    assert_eq!(entries_to_json(&snapshot), cache.to_json());
+    assert_eq!(load_cache(&entries_to_json(&snapshot)).len(), 2);
+}
+
+#[test]
 fn drops_the_oldest_and_round_trips_through_json() {
     let mut cache = Cache::new(2);
     assert!(cache.is_empty());

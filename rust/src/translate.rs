@@ -104,17 +104,15 @@ impl Cache {
 
     /// 保存する JSON にする (古い順).
     pub fn to_json(&self) -> String {
-        let entries: Vec<Entry> = self
-            .order
+        entries_to_json(&self.snapshot())
+    }
+
+    /// 全ての翻訳の写し (古い順). ロックの中では写しだけを作り, JSON にするのは, ロックの外で行う.
+    pub fn snapshot(&self) -> Vec<(String, String)> {
+        self.order
             .iter()
-            .filter_map(|key| {
-                self.map.get(key).map(|value| Entry {
-                    key: key.clone(),
-                    value: value.clone(),
-                })
-            })
-            .collect();
-        serde_json::to_string(&entries).unwrap_or_default()
+            .filter_map(|key| self.map.get(key).map(|value| (key.clone(), value.clone())))
+            .collect()
     }
 
     /// JSON から読む (読めなければ, 空).
@@ -135,6 +133,18 @@ impl Cache {
     pub fn is_empty(&self) -> bool {
         self.map.is_empty()
     }
+}
+
+/// 翻訳の写し ([`Cache::snapshot`]) を, 保存する JSON にする.
+pub fn entries_to_json(entries: &[(String, String)]) -> String {
+    let entries: Vec<Entry> = entries
+        .iter()
+        .map(|(key, value)| Entry {
+            key: key.clone(),
+            value: value.clone(),
+        })
+        .collect();
+    serde_json::to_string(&entries).unwrap_or_default()
 }
 
 /// 既定の上限のキャッシュを, JSON から読む.
@@ -531,20 +541,22 @@ impl Backend for GeminiBackend {
                 )
             };
             let send = Arc::new(send);
-            let mut results = Vec::new();
-            for wave in batches.chunks(GEMINI_PARALLEL) {
-                let mut tasks = JoinSet::new();
-                for (index, batch) in wave.iter().enumerate() {
-                    let (send, batch) = (send.clone(), batch.clone());
+            // 同時に GEMINI_PARALLEL 個まで送る. 1 つ終わるたびに, 次を送る (遅い 1 つを, まとめて待たない)
+            let mut parts: Vec<Vec<String>> = vec![Vec::new(); batches.len()];
+            let mut tasks = JoinSet::new();
+            let mut next = 0;
+            while next < batches.len() || !tasks.is_empty() {
+                while next < batches.len() && tasks.len() < GEMINI_PARALLEL {
+                    let (send, batch, index) = (send.clone(), batches[next].clone(), next);
                     tasks.spawn(async move { (index, translate_halving(batch, &*send).await) });
+                    next += 1;
                 }
-                let mut parts = vec![Vec::new(); wave.len()];
-                while let Some(done) = tasks.join_next().await {
+                if let Some(done) = tasks.join_next().await {
                     let (index, result) = done.map_err(|e| e.to_string())?;
                     parts[index] = result?;
                 }
-                results.extend(parts.into_iter().flatten());
             }
+            let results: Vec<String> = parts.into_iter().flatten().collect();
 
             Ok(merge_blank(&all, &indexes, results))
         }

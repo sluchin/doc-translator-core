@@ -41,7 +41,8 @@ import {
 } from "../lib/saved";
 import {
   AbortedError,
-  DEFAULT_LIMITS,
+  GEMINI_LIMITS,
+  GOOGLE_LIMITS,
   MLKIT_LIMITS,
   type Progress,
   type TranslateFn,
@@ -285,8 +286,13 @@ export function useViewer(profile: SiteProfile): Viewer {
           found.partial = undefined;
           // 1 つずつ翻訳する (ML Kit と無料の Google 翻訳) ときは、小さい単位で依頼して、経過をこまめに進める
           const { provider } = await api.getSettings();
+          // クラウドの翻訳は、いくつか同時に送る (速くなる). 無料の Google 翻訳は、断られないよう、1 つずつ
           const limits =
-            provider === "google" || provider === "gemini" ? DEFAULT_LIMITS : MLKIT_LIMITS;
+            provider === "google"
+              ? GOOGLE_LIMITS
+              : provider === "gemini"
+                ? GEMINI_LIMITS
+                : MLKIT_LIMITS;
           // 版のあるサイトは、版ごとに、別のキャッシュにする (URL に版がないサイトは、読み取った今の版)
           const scope = profile.versions
             ? versionOf(key, profile.versions.pattern)
@@ -294,7 +300,8 @@ export function useViewer(profile: SiteProfile): Viewer {
           const translated = await translatePage(
             found.page,
             (texts) => api.translate(texts, scope),
-            setProgress,
+            // 別のページに移ったあとは、前のページの経過を出さない
+            (next) => !signal.aborted && setProgress(next),
             signal,
             limits,
             (partial) => {

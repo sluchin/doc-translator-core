@@ -37,6 +37,8 @@ import { collectSegments, keepsStructure, markAtomic } from "./segments";
 import {
   AbortedError,
   DEFAULT_LIMITS,
+  GEMINI_LIMITS,
+  GOOGLE_LIMITS,
   MAX_CHARS,
   MAX_ITEMS,
   MLKIT_LIMITS,
@@ -612,6 +614,67 @@ describe("translatePage", () => {
     expect(send).toHaveBeenCalledWith(["Sample Topic", "Hello"]);
     expect(result.html).toContain("JA(Hello)");
     expect(await noLookup(["a", "b"])).toEqual([null, null]);
+  });
+
+  it("sends the requests at the same time up to the limit", async () => {
+    const many = {
+      ...page,
+      html: Array.from({ length: 6 }, (_, i) => `<p>Para ${i}</p>`).join(""),
+    };
+    let running = 0;
+    let peak = 0;
+    const slow = async (texts: string[]) => {
+      running += 1;
+      peak = Math.max(peak, running);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      running -= 1;
+      return fake(texts);
+    };
+    const partials: string[] = [];
+    // 7 個 (タイトルと 6 つの段落) を 2 個ずつ: 4 回の依頼を, 3 つまで同時に送る
+    const result = await translatePage(
+      many,
+      slow,
+      () => undefined,
+      { aborted: false },
+      { items: 2, chars: 8000, parallel: 3 },
+      (partial) => partials.push(partial.html),
+    );
+    expect(peak).toBe(3);
+    expect(result.html).toContain("JA(Para 0)");
+    expect(result.html).toContain("JA(Para 5)");
+    // 最後の依頼のあとは, 途中の翻訳を渡さない
+    expect(partials).toHaveLength(3);
+    expect(GOOGLE_LIMITS.parallel).toBe(3);
+    expect(GEMINI_LIMITS.parallel).toBe(2);
+    expect(GOOGLE_LIMITS.items).toBe(DEFAULT_LIMITS.items);
+  });
+
+  it("stops passing the partial translation after a request fails", async () => {
+    const many = {
+      ...page,
+      html: Array.from({ length: 6 }, (_, i) => `<p>Para ${i}</p>`).join(""),
+    };
+    const partials: string[] = [];
+    const failing = async (texts: string[]) => {
+      if (texts.includes("Para 0")) {
+        throw new Error("limited");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      return fake(texts);
+    };
+    await expect(
+      translatePage(
+        many,
+        failing,
+        () => undefined,
+        { aborted: false },
+        { items: 2, chars: 8000, parallel: 2 },
+        (partial) => partials.push(partial.html),
+      ),
+    ).rejects.toThrow("limited");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(partials).toEqual([]);
   });
 
   it("stops when it is aborted", async () => {
