@@ -49,6 +49,8 @@ export interface SiteProfile {
   readonly dropCodeLines?: RegExp;
   /** タイトルの末尾の, サイト名 (取り除く). */
   readonly titleSuffix: RegExp;
+  /** サイトが日本語のとき true (翻訳しない. 原文の切り替えと設定のボタンも出さない). 既定は false. */
+  readonly japanese?: boolean;
   /** メニュー (目次) の取り方 (なければ, メニューを出さない). */
   readonly menu?: MenuSource;
 }

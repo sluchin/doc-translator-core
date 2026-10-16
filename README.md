@@ -20,7 +20,7 @@
 アプリ (`zephyr-doc` を見本にする) に次のものを置きます。
 
 1. サブモジュール `shared/` (このリポジトリ)。
-2. サイトの設定 `src/site.ts` (`SiteProfile`: ホスト、パスの先頭、最初のページ、本文のセレクタ、取り除く要素、タイトルの末尾、メニューの取り方)。
+2. サイトの設定 `src/site.ts` (`SiteProfile`: ホスト、パスの先頭、最初のページ、本文のセレクタ、取り除く要素、タイトルの末尾、メニューの取り方、サイトが日本語のときの `japanese`: 翻訳せずにそのまま表示する)。
 3. `src/main.tsx`: `<App profile={site} />` (`shared/ts/ui/App`) を表示する。
 4. `src-tauri/`: `Cargo.toml` に `doc-translator-core` と `tauri-plugin-mlkit` を `../shared/...` のパスで書く。`lib.rs` で `doc_translator_core::builder(Site { host, user_agent })` に `tauri_plugin_mlkit::init()` を足して、`run(generate_context!())` する。
 5. `tauri.conf.json`: 名前、識別子、CSP (画像はサイトのホストだけ許す)。

@@ -10,6 +10,7 @@ import { type TranslateFn, chunk } from "./translatePage";
 
 /**
  * `li` から, メニューの項目を作る (直接の子の `a` が, 名前と URL. 直接の子の `ul` が, 子の項目).
+ * `a` がない項目 (ボタンだけのグループなど) の名前は, `ul` を除いた子の文字にする.
  *
  * @param li 項目の要素
  * @param base ページの URL
@@ -19,7 +20,11 @@ function itemFromLi(li: Element, base: string): MenuItem {
   const children = Array.from(li.children);
   const link = children.find((child) => child.tagName === "A");
   const href = link?.getAttribute("href");
-  const title = ((link ?? li).textContent as string).replace(/\s+/g, " ").trim();
+  const own = Array.from(li.childNodes)
+    .filter((node) => !(node instanceof Element && node.tagName === "UL"))
+    .map((node) => node.textContent)
+    .join(" ");
+  const title = ((link ? link.textContent : own) as string).replace(/\s+/g, " ").trim();
   return {
     title,
     url: href ? absoluteUrl(href, base) : undefined,

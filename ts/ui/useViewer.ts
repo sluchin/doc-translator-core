@@ -217,7 +217,7 @@ export function useViewer(profile: SiteProfile): Viewer {
           setHtmlMenu(found.page.menu);
         }
         setLoading(false);
-        if (language === "ja" && !found.translated) {
+        if (language === "ja" && !found.translated && profile.japanese !== true) {
           found.partial = undefined;
           // 1 つずつ翻訳する (ML Kit と無料の Google 翻訳) ときは、小さい単位で依頼して、経過をこまめに進める
           const { provider } = await api.getSettings();

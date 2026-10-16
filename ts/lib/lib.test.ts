@@ -49,7 +49,8 @@ const PAGE = `<!doctype html><html><head><title>Sample Topic — Test Documentat
 <nav class="side">Side menu<div class="menu"><dl><dt>Versions</dt></dl>
 <ul class="current"><li class="l1"><a href="../a.html">Alpha</a></li>
 <li class="l1 current"><a href="index.html">Beta</a><ul><li><a href="sub/x.html#part">Gamma  <b>X</b></a></li><li>Heading only</li></ul></li>
-<li><span></span></li></ul></div></nav>
+<li><span></span></li>
+<li><button>Group  <i>Title</i></button><ul><li><a href="g.html">G1</a></li></ul></li></ul></div></nav>
 <div role="main"><section id="sample"><h1>Sample Topic<a class="headerlink" href="#sample">¶</a></h1>
 <p>Call <code>do_it()</code> and read <a href="other/page.html#part">the other page</a> now.</p>
 <div class="highlight"><pre>int x = 1; // keep</pre></div>
@@ -173,7 +174,9 @@ describe("menu", () => {
   const page = extractPage(PAGE, "https://docs.example.com/latest/topic/index.html", PROFILE);
 
   it("reads the nested lists of the menu element with absolute urls", () => {
-    expect(page.menu.map((item) => item.title)).toEqual(["Alpha", "Beta"]);
+    expect(page.menu.map((item) => item.title)).toEqual(["Alpha", "Beta", "Group Title"]);
+    expect(page.menu[2].url).toBeUndefined();
+    expect(page.menu[2].children.map((c) => c.title)).toEqual(["G1"]);
     expect(page.menu[0].url).toBe("https://docs.example.com/latest/a.html");
     expect(page.menu[1].children.map((c) => [c.title, c.url])).toEqual([
       ["Gamma X", "https://docs.example.com/latest/topic/sub/x.html#part"],
@@ -205,7 +208,7 @@ describe("menu", () => {
 
   it("collects the titles once and replaces them", () => {
     const titles = collectTitles([...page.menu, ...page.menu]);
-    expect(titles).toEqual(["Alpha", "Beta", "Gamma X", "Heading only"]);
+    expect(titles).toEqual(["Alpha", "Beta", "Gamma X", "Heading only", "Group Title", "G1"]);
     const mapped = withTitles(
       page.menu,
       new Map([

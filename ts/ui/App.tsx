@@ -78,12 +78,16 @@ export default function App({ profile }: Props) {
           onKeyDown={(event) => event.key === "Enter" && submit()}
           onBlur={() => setAddress(undefined)}
         />
-        <button onClick={viewer.toggleLang} aria-pressed={viewer.lang === "ja"}>
-          {viewer.lang === "ja" ? "原文に戻す" : "日本語に翻訳"}
-        </button>
-        <button onClick={() => setSettings(true)} aria-label="設定">
-          ⚙
-        </button>
+        {profile.japanese !== true && (
+          <button onClick={viewer.toggleLang} aria-pressed={viewer.lang === "ja"}>
+            {viewer.lang === "ja" ? "原文に戻す" : "日本語に翻訳"}
+          </button>
+        )}
+        {profile.japanese !== true && (
+          <button onClick={() => setSettings(true)} aria-label="設定">
+            ⚙
+          </button>
+        )}
       </header>
       {(viewer.loading || viewer.progress) && (
         <div className="status" role="status">
@@ -136,7 +140,7 @@ export default function App({ profile }: Props) {
         onClose={() => setDrawer(false)}
         menu={viewer.menu}
         currentUrl={viewer.url}
-        lang={viewer.lang}
+        lang={profile.japanese === true ? "en" : viewer.lang}
         bookmarks={viewer.bookmarks}
         onRemoveBookmark={viewer.removeBookmark}
         onHome={viewer.home}
