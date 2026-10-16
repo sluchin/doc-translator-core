@@ -114,6 +114,26 @@ input {
   }
 }
 
+/* タブ: 同じホストの、別のドキュメントを切り替える */
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.tabs button {
+  flex: 1;
+  border-radius: 8px 8px 0 0;
+  border-bottom: 3px solid transparent;
+}
+
+.tabs button[aria-selected="true"] {
+  font-weight: bold;
+  border-bottom-color: var(--accent, currentColor);
+}
+
 .content-wrap {
   position: relative;
   flex: 1;

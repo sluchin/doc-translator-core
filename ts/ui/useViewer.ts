@@ -5,9 +5,9 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { MenuItem, SiteProfile } from "../lib/profile";
+import type { MenuItem, MenuSource, SiteProfile } from "../lib/profile";
 import * as api from "./api";
-import { hashOf, isDocUrl, withoutHash } from "../lib/docUrl";
+import { hashOf, isDocUrl, tabIndexOf, withoutHash } from "../lib/docUrl";
 import { type DocPage, extractPage } from "../lib/extract";
 import {
   EMPTY_NAV,
@@ -19,6 +19,7 @@ import {
   forward,
   push,
 } from "../lib/history";
+import { parseHtmlMenu } from "../lib/menu";
 import { type Metrics, type Position, screenPosition, scrollRatio } from "../lib/progress";
 import {
   type Bookmark,
@@ -95,6 +96,14 @@ export interface Viewer {
   anchor: string;
   /** メニュー (目次). */
   menu: readonly MenuItem[];
+  /** タブの名前 (タブがないサイトでは空). */
+  tabs: readonly string[];
+  /** 今のページのタブの番号. */
+  tab: number;
+  /** 今のタブにメニューがあるか. */
+  hasMenu: boolean;
+  /** タブを切り替える (そのタブで最後に開いたページ. なければ、最初のページ). */
+  selectTab: (index: number) => void;
   /** 表示している本文のページの URL (フラグメントなし. 取得が終わるまでは、前のページ). */
   docUrl: string;
   /** 開いたときに戻す、読んだ位置 (0 から 1. 覚えていなければ undefined). */
@@ -165,7 +174,10 @@ export function useViewer(profile: SiteProfile): Viewer {
   const [needsKey, setNeedsKey] = useState(false);
   const [anchor, setAnchor] = useState("");
   const [htmlMenu, setHtmlMenu] = useState<readonly MenuItem[]>([]);
-  const [jsonMenu, setJsonMenu] = useState<readonly MenuItem[]>([]);
+  // 別のファイルから読んだメニュー (ファイルの URL ごと)
+  const [fileMenus, setFileMenus] = useState<Record<string, readonly MenuItem[]>>({});
+  // タブごとに、最後に開いたページ
+  const tabUrls = useRef<Record<number, string>>({});
   const cache = useRef(new Map<string, Entry>());
   const loaded = entry !== undefined;
   const docUrl = entry?.page.url ?? withoutHash(initial.start);
@@ -279,17 +291,32 @@ export function useViewer(profile: SiteProfile): Viewer {
     };
   }, [flush]);
 
+  const tabs = profile.tabs ?? [];
+  const tab = tabIndexOf(current(nav) ?? profile.homeUrl, tabs);
+  const source: MenuSource | undefined = tabs.length > 0 ? tabs[tab]?.menu : profile.menu;
+  const sourceUrl = source && source.type !== "html" ? source.url : undefined;
+
   useEffect(() => {
-    const source = profile.menu;
-    if (source?.type !== "json") {
+    if (source === undefined || source.type === "html" || fileMenus[source.url] !== undefined) {
       return;
     }
-    // メニューの JSON を取得する (失敗しても、メニューが出ないだけ)
-    api
-      .fetchJson(source.url)
-      .then((text) => setJsonMenu(source.parse(JSON.parse(text), source.url)))
+    // メニューのファイルを取得する (失敗しても、メニューが出ないだけ)
+    const { url } = source;
+    const fetched =
+      source.type === "json"
+        ? api.fetchJson(url).then((text) => source.parse(JSON.parse(text) as unknown, url))
+        : api.fetchPage(url).then((text) => {
+            const root = new DOMParser()
+              .parseFromString(text, "text/html")
+              .querySelector(source.selector);
+            return root ? parseHtmlMenu(root, url, source.list) : [];
+          });
+    fetched
+      .then((items) => setFileMenus((menus) => ({ ...menus, [url]: items })))
       .catch(() => undefined);
-  }, [profile]);
+    // source は、プロファイルの定数. ファイルの URL が変わったときだけ、取得する
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceUrl]);
 
   const open = useCallback(
     (url: string) => {
@@ -335,7 +362,12 @@ export function useViewer(profile: SiteProfile): Viewer {
     persist({ ...savedRef.current, bookmarks: next });
     setBookmarks(next);
   };
-  const menu = profile.menu?.type === "json" ? jsonMenu : htmlMenu;
+  const menu = sourceUrl !== undefined ? (fileMenus[sourceUrl] ?? []) : htmlMenu;
+
+  useEffect(() => {
+    // タブごとに、最後に開いたページを覚える (タブを切り替えて、戻ったとき)
+    tabUrls.current[tab] = url;
+  }, [tab, url]);
 
   return {
     title: (translation ? translation.title : entry?.page.title) ?? "",
@@ -349,6 +381,15 @@ export function useViewer(profile: SiteProfile): Viewer {
     kept: translation?.kept ?? 0,
     anchor,
     menu,
+    tabs: tabs.map((t) => t.label),
+    tab,
+    hasMenu: source !== undefined,
+    selectTab: (index) => {
+      const target = tabs[index];
+      if (target !== undefined && index !== tab) {
+        open(tabUrls.current[index] ?? target.homeUrl);
+      }
+    },
     docUrl,
     restore,
     metrics,
@@ -361,7 +402,7 @@ export function useViewer(profile: SiteProfile): Viewer {
     open,
     goBack: () => move(back(nav)),
     goForward: () => move(forward(nav)),
-    home: () => open(profile.homeUrl),
+    home: () => open(tabs[tab]?.homeUrl ?? profile.homeUrl),
     setScroll,
     toggleBookmark: () => changeBookmarks(toggleBookmark(bookmarks, withoutHash(url), title)),
     removeBookmark: (target) => changeBookmarks(bookmarks.filter((b) => b.url !== target)),

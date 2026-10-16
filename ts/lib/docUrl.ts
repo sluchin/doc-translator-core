@@ -4,28 +4,53 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import type { SiteProfile } from "./profile";
+import type { SiteProfile, SiteTab } from "./profile";
 
 /**
  * URL が, アプリの中で開いてよい, ドキュメントのページかを確かめる.
  *
  * @param url URL
- * @param site サイトの設定 (ホストと, パスの先頭)
+ * @param site サイトの設定 (ホストと, パスの先頭. タブがあれば, どれかのタブのパスの先頭)
  * @returns https で, ホストが一致して, パスが先頭に合うなら true
  */
 export function isDocUrl(
   url: string,
-  site: Pick<SiteProfile, "host" | "pathPrefix" | "alt">,
+  site: Pick<SiteProfile, "host" | "pathPrefix" | "alt" | "tabs">,
 ): boolean {
   try {
     const parsed = new URL(url);
+    const prefixes = site.tabs ? site.tabs.map((tab) => tab.pathPrefix) : [site.pathPrefix];
     return (
       parsed.protocol === "https:" &&
       (parsed.hostname === site.host || parsed.hostname === site.alt?.host) &&
-      parsed.pathname.startsWith(site.pathPrefix)
+      prefixes.some((prefix) => parsed.pathname.startsWith(prefix))
     );
   } catch {
     return false;
+  }
+}
+
+/**
+ * URL が, どのタブのドキュメントかを調べる (パスの先頭が, 一番長く合うタブ).
+ *
+ * @param url ページの URL
+ * @param tabs タブの一覧
+ * @returns タブの番号 (どれにも合わなければ 0. 読めない URL も 0)
+ */
+export function tabIndexOf(url: string, tabs: readonly SiteTab[]): number {
+  try {
+    const path = new URL(url).pathname;
+    let best = 0;
+    let length = -1;
+    tabs.forEach((tab, index) => {
+      if (path.startsWith(tab.pathPrefix) && tab.pathPrefix.length > length) {
+        best = index;
+        length = tab.pathPrefix.length;
+      }
+    });
+    return best;
+  } catch {
+    return 0;
   }
 }
 

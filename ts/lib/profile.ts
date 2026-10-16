@@ -14,13 +14,25 @@ export interface MenuItem {
   readonly children: readonly MenuItem[];
 }
 
-/** メニューの取り方: ページの HTML の中にあるか, 別の JSON ファイルにあるか. */
+/** メニューの取り方: ページの HTML の中にあるか, 別の HTML か JSON のファイルにあるか. */
 export type MenuSource =
   | {
       /** ページの HTML の中の, メニューの要素から読む. */
       readonly type: "html";
-      /** メニューの要素の CSS セレクタ (中の, 入れ子の `ul` を読む). */
+      /** メニューの要素の CSS セレクタ (中の, 入れ子の一覧を読む). */
       readonly selector: string;
+      /** 一覧の要素の CSS セレクタ (既定は `ul`. 番号つきの一覧なら `ul, ol`). */
+      readonly list?: string;
+    }
+  | {
+      /** サイトの別の HTML ファイル (ホストの中. mdBook の `toc.html` など) の, メニューの要素から読む. */
+      readonly type: "htmlFile";
+      /** HTML ファイルの URL (メニューの相対のリンクは, この URL から絶対 URL にする). */
+      readonly url: string;
+      /** メニューの要素の CSS セレクタ. */
+      readonly selector: string;
+      /** 一覧の要素の CSS セレクタ (既定は `ul`. 番号つきの一覧なら `ul, ol`). */
+      readonly list?: string;
     }
   | {
       /** サイトの JSON ファイル (ホストの中) から読む. */
@@ -30,6 +42,18 @@ export type MenuSource =
       /** JSON を, メニューの項目にする. */
       readonly parse: (json: unknown, base: string) => MenuItem[];
     };
+
+/** タブ: 同じホストの, 別のドキュメント (パスの先頭が違う). 画面の上のタブで切り替える. */
+export interface SiteTab {
+  /** タブの名前. */
+  readonly label: string;
+  /** このドキュメントのページのパスの先頭 (例: `/nomicon/`). 末尾の `/` まで書く. */
+  readonly pathPrefix: string;
+  /** このドキュメントの最初のページ. */
+  readonly homeUrl: string;
+  /** このドキュメントのメニュー (目次) の取り方 (なければ, このタブにはメニューを出さない). */
+  readonly menu?: MenuSource;
+}
 
 /** 翻訳するドキュメントのサイトごとの設定 (アプリごとに 1 つ). */
 export interface SiteProfile {
@@ -63,6 +87,11 @@ export interface SiteProfile {
   };
   /** サイトが日本語のとき true (翻訳しない. 原文の切り替えと設定のボタンも出さない). 既定は false. */
   readonly japanese?: boolean;
-  /** メニュー (目次) の取り方 (なければ, メニューを出さない). */
+  /** メニュー (目次) の取り方 (なければ, メニューを出さない. `tabs` があるときは, タブごとに決めるので, 使わない). */
   readonly menu?: MenuSource;
+  /**
+   * 同じホストの, 複数のドキュメントを, タブで切り替えるときの, タブの一覧 (2 つ以上).
+   * あれば, アプリの中で開くのは, タブのパスの先頭に合うページだけ (`pathPrefix` は使わない).
+   */
+  readonly tabs?: readonly SiteTab[];
 }

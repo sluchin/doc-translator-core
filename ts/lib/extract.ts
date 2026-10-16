@@ -41,7 +41,10 @@ export function extractPage(html: string, url: string, profile: SiteProfile): Do
     profile.contentSelectors.map((selector) => doc.querySelector(selector)).find(Boolean) ??
     doc.body;
   const menuRoot = profile.menu?.type === "html" ? doc.querySelector(profile.menu.selector) : null;
-  const menu = menuRoot ? parseHtmlMenu(menuRoot, url) : [];
+  const menu =
+    menuRoot && profile.menu?.type === "html"
+      ? parseHtmlMenu(menuRoot, url, profile.menu.list)
+      : [];
   const content = root.cloneNode(true) as Element;
   content
     .querySelectorAll([...REMOVE, ...profile.removeSelectors].join(", "))

@@ -9,55 +9,65 @@ import type { MenuItem } from "./profile";
 import { type TranslateFn, chunk } from "./translatePage";
 
 /**
- * `li` から, メニューの項目を作る (直接の子の `a` が, 名前と URL. この項目の中の, 一番外側の `ul` が, 子の項目 (間に `div` があってもよい).
- * `a` がない項目 (ボタンだけのグループなど) の名前は, `ul` を含まない子の文字にする.
+ * `li` から, メニューの項目を作る (名前と URL は, 直接の子の `a` か, 一覧を含まない直接の子の中の `a`.
+ * この項目の中の, 一番外側の一覧が, 子の項目 (間に `div` があってもよい).
+ * `a` がない項目 (ボタンだけのグループなど) の名前は, 一覧を含まない子の文字にする.
  *
  * @param li 項目の要素
  * @param base ページの URL
+ * @param list 一覧の要素の CSS セレクタ
  * @returns 項目
  */
-function itemFromLi(li: Element, base: string): MenuItem {
+function itemFromLi(li: Element, base: string, list: string): MenuItem {
   const children = Array.from(li.children);
-  const link = children.find((child) => child.tagName === "A");
+  const nested = `${list}, :has(${list})`;
+  const link =
+    children.find((child) => child.tagName === "A") ??
+    children
+      .filter((child) => !child.matches(nested))
+      .map((child) => child.querySelector("a"))
+      .find((found) => found !== null);
   const href = link?.getAttribute("href");
   const own = Array.from(li.childNodes)
-    .filter((node) => !(node instanceof Element && node.matches("ul, :has(ul)")))
+    .filter((node) => !(node instanceof Element && node.matches(nested)))
     .map((node) => node.textContent)
     .join(" ");
   const title = ((link ? link.textContent : own) as string).replace(/\s+/g, " ").trim();
   return {
     title,
     url: href ? absoluteUrl(href, base) : undefined,
-    children: Array.from(li.querySelectorAll("ul"))
-      .filter((ul) => ul.parentElement?.closest("li") === li)
-      .flatMap((ul) => itemsFromUl(ul, base)),
+    children: Array.from(li.querySelectorAll(list))
+      .filter((child) => child.parentElement?.closest("li") === li)
+      .flatMap((child) => itemsFromList(child, base, list)),
   };
 }
 
 /**
- * `ul` から, 項目の一覧を作る.
+ * 一覧 (`ul` か `ol`) から, 項目の一覧を作る.
  *
- * @param ul 一覧の要素
+ * @param element 一覧の要素
  * @param base ページの URL
+ * @param list 一覧の要素の CSS セレクタ
  * @returns 項目
  */
-function itemsFromUl(ul: Element, base: string): MenuItem[] {
-  return Array.from(ul.children)
+function itemsFromList(element: Element, base: string, list: string): MenuItem[] {
+  return Array.from(element.children)
     .filter((child) => child.tagName === "LI")
-    .map((li) => itemFromLi(li, base));
+    .map((li) => itemFromLi(li, base, list));
 }
 
 /**
- * HTML のメニューの要素から, 項目の木を作る (要素の中の, 一番外側の `ul` を, 全て読む).
+ * HTML のメニューの要素から, 項目の木を作る (要素の中の, 一番外側の一覧を, 全て読む).
  *
  * @param root メニューの要素
  * @param base ページの URL (相対のリンクを, 絶対 URL にする)
+ * @param list 一覧の要素の CSS セレクタ (既定は `ul`)
  * @returns 項目 (名前のない項目は除く)
  */
-export function parseHtmlMenu(root: Element, base: string): MenuItem[] {
-  return Array.from(root.querySelectorAll("ul"))
-    .filter((ul) => !ul.parentElement?.closest("ul"))
-    .flatMap((ul) => itemsFromUl(ul, base))
+export function parseHtmlMenu(root: Element, base: string, list = "ul"): MenuItem[] {
+  return Array.from(root.querySelectorAll(list))
+    .filter((element) => !element.parentElement?.closest(list))
+    .flatMap((element) => itemsFromList(element, base, list))
     .filter((item) => item.title !== "");
 }
 

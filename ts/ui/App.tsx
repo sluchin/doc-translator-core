@@ -48,7 +48,7 @@ export default function App({ profile }: Props) {
   return (
     <div className="app">
       <header className="toolbar">
-        {profile.menu && (
+        {viewer.hasMenu && (
           <button onClick={() => setDrawer(true)} aria-label="メニュー">
             ☰
           </button>
@@ -96,6 +96,20 @@ export default function App({ profile }: Props) {
           </button>
         )}
       </header>
+      {viewer.tabs.length > 0 && (
+        <nav className="tabs" role="tablist" aria-label="ドキュメント">
+          {viewer.tabs.map((label, index) => (
+            <button
+              key={label}
+              role="tab"
+              aria-selected={index === viewer.tab}
+              onClick={() => viewer.selectTab(index)}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+      )}
       {(viewer.loading || viewer.progress) && (
         <div className="status" role="status">
           {viewer.loading

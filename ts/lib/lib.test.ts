@@ -6,7 +6,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { extractPage } from "./extract";
-import { hashOf, isDocUrl, switchedUrl, withoutHash } from "./docUrl";
+import { hashOf, isDocUrl, switchedUrl, tabIndexOf, withoutHash } from "./docUrl";
 import type { SiteProfile } from "./profile";
 import { EMPTY_NAV, back, canGoBack, canGoForward, current, forward, push } from "./history";
 import {
@@ -14,6 +14,7 @@ import {
   containsCurrent,
   htmlToText,
   isCurrent,
+  parseHtmlMenu,
   translateTitles,
   withTitles,
 } from "./menu";
@@ -92,6 +93,25 @@ describe("docUrl", () => {
     expect(switchedUrl("https://other.example.com/a", both)).toBe("https://other.example.com/a");
     expect(switchedUrl(`https://${HOST}/a`, PROFILE)).toBe(`https://${HOST}/a`);
     expect(switchedUrl("not a url", both)).toBe("not a url");
+  });
+
+  it("accepts the pages of the tabs only, and finds the tab of a page", () => {
+    const tabs = [
+      { label: "A", pathPrefix: "/a/", homeUrl: `https://${HOST}/a/index.html` },
+      { label: "B", pathPrefix: "/b/", homeUrl: `https://${HOST}/b/index.html` },
+      { label: "B2", pathPrefix: "/b/deep/", homeUrl: `https://${HOST}/b/deep/index.html` },
+    ];
+    const tabbed = { ...PROFILE, pathPrefix: "/", tabs };
+    expect(isDocUrl(`https://${HOST}/a/x.html`, tabbed)).toBe(true);
+    expect(isDocUrl(`https://${HOST}/b/x.html`, tabbed)).toBe(true);
+    // タブのどれにも合わない (ホストの中の、別のドキュメント)
+    expect(isDocUrl(`https://${HOST}/c/x.html`, tabbed)).toBe(false);
+    expect(tabIndexOf(`https://${HOST}/a/x.html`, tabs)).toBe(0);
+    expect(tabIndexOf(`https://${HOST}/b/x.html`, tabs)).toBe(1);
+    // 長く合うほうのタブ
+    expect(tabIndexOf(`https://${HOST}/b/deep/x.html`, tabs)).toBe(2);
+    expect(tabIndexOf(`https://${HOST}/c/x.html`, tabs)).toBe(0);
+    expect(tabIndexOf("not a url", tabs)).toBe(0);
   });
 
   it("removes and reads the fragment", () => {
@@ -211,6 +231,42 @@ describe("menu", () => {
         menu: { type: "json", url: "https://a/t.json", parse: () => [] },
       }).menu,
     ).toEqual([]);
+  });
+
+  it("reads the numbered lists whose links are wrapped in an element", () => {
+    const toc = new DOMParser().parseFromString(
+      `<ol class="chapter"><li class="part-title">Part One</li>
+<li class="item"><span class="wrap"><a href="one.html"><strong>1.</strong> One</a></span><ol class="section">
+<li class="item"><span class="wrap"><a href="one-a.html">1.1. Sub</a></span></li></ol>
+<li class="spacer"></li>
+<li class="item"><div class="plain">No link</div></li></ol>`,
+      "text/html",
+    ).body;
+    const items = parseHtmlMenu(toc, "https://docs.example.com/book/toc.html", "ul, ol");
+    expect(items.map((item) => [item.title, item.url])).toEqual([
+      ["Part One", undefined],
+      ["1. One", "https://docs.example.com/book/one.html"],
+      ["No link", undefined],
+    ]);
+    expect(items[1].children.map((c) => [c.title, c.url])).toEqual([
+      ["1.1. Sub", "https://docs.example.com/book/one-a.html"],
+    ]);
+    // 既定 (`ul`) では、`ol` を読まない
+    expect(parseHtmlMenu(toc, "https://a/")).toEqual([]);
+    // タブごとの、別のファイルのメニューは、ページからは読まない
+    expect(
+      extractPage(PAGE, "https://a/", {
+        ...PROFILE,
+        menu: { type: "htmlFile", url: "https://a/toc.html", selector: "ol" },
+      }).menu,
+    ).toEqual([]);
+    // 一覧の要素の指定は、ページのメニューにも使える
+    expect(
+      extractPage(`<nav><ol><li><a href="x.html">X</a></li></ol></nav>`, "https://a/b/", {
+        ...PROFILE,
+        menu: { type: "html", selector: "nav", list: "ol" },
+      }).menu.map((item) => item.url),
+    ).toEqual(["https://a/b/x.html"]);
   });
 
   it("finds the current page and the branch that contains it", () => {
