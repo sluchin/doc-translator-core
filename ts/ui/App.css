@@ -350,10 +350,24 @@ input {
 
 .dialog {
   width: min(480px, 100%);
+  /* 画面より長いとき (選んだサービスで、項目が増えたとき) は、中をスクロールする (下のボタンが画面の外に出ない) */
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 16px;
+}
+
+/* 保存と閉じるのボタンは、スクロールしても、下に見えたままにする */
+.dialog > .actions {
+  position: sticky;
+  bottom: -16px;
+  margin: 12px -16px -16px;
+  padding: 12px 16px 16px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
 }
 
 .dialog h2 {
