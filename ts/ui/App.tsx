@@ -12,7 +12,47 @@ import { ScrollBar } from "./ScrollBar";
 import { SettingsDialog } from "./SettingsDialog";
 import { isDocUrl, switchedUrl } from "../lib/docUrl";
 import type { SiteProfile } from "../lib/profile";
+import { useSyncScroll } from "./useSyncScroll";
 import { useViewer } from "./useViewer";
+
+/** 原文と翻訳を並べられる、画面の幅 (PC など). 狭い画面 (スマホ) では、並べない. */
+const WIDE = "(min-width: 900px)";
+
+/** 原文を並べるかを覚えておく、端末の保存のキー. */
+const SIDE_BY_SIDE_KEY = "doc-translator:side-by-side";
+
+/** 原文の側の本文は、読んだ位置を覚えない (翻訳の側が覚える). */
+const ignoreScroll = () => undefined;
+
+/**
+ * 画面が広いか (メディアクエリに合うか) を返す. 画面の幅が変わったら、更新する.
+ *
+ * @param query メディアクエリ
+ * @returns 合えば true
+ */
+function useMedia(query: string): boolean {
+  const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const list = window.matchMedia(query);
+    const changed = () => setMatches(list.matches);
+    list.addEventListener("change", changed);
+    return () => list.removeEventListener("change", changed);
+  }, [query]);
+  return matches;
+}
+
+/**
+ * 原文を並べるかを、端末から読む (読めなければ、並べない).
+ *
+ * @returns 並べるなら true
+ */
+function loadSideBySide(): boolean {
+  try {
+    return window.localStorage.getItem(SIDE_BY_SIDE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 /** アプリの画面の引数. */
 interface Props {
@@ -31,6 +71,22 @@ export default function App({ profile }: Props) {
   const [settings, setSettings] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const box = useRef<HTMLElement>(null);
+  const sourceBox = useRef<HTMLElement>(null);
+  const wide = useMedia(WIDE);
+  const [sideBySide, setSideBySide] = useState(loadSideBySide);
+  // 原文と翻訳を並べるのは、広い画面で、翻訳を表示しているときだけ
+  const split = wide && sideBySide && profile.japanese !== true && viewer.lang === "ja";
+  useSyncScroll(sourceBox, box, split, viewer.html);
+
+  const toggleSideBySide = () => {
+    const next = !sideBySide;
+    setSideBySide(next);
+    try {
+      window.localStorage.setItem(SIDE_BY_SIDE_KEY, next ? "1" : "0");
+    } catch {
+      // 覚えられなくても、今の表示は切り替える
+    }
+  };
   const [address, setAddress] = useState<string>();
 
   useEffect(() => {
@@ -99,6 +155,11 @@ export default function App({ profile }: Props) {
               : profile.alt.toLabel}
           </button>
         )}
+        {profile.japanese !== true && wide && (
+          <button onClick={toggleSideBySide} aria-pressed={sideBySide}>
+            {sideBySide ? "原文を閉じる" : "原文を並べる"}
+          </button>
+        )}
         {profile.japanese !== true && (
           <button onClick={viewer.toggleLang} aria-pressed={viewer.lang === "ja"}>
             {viewer.lang === "ja" ? "原文に戻す" : "日本語に翻訳"}
@@ -150,7 +211,21 @@ export default function App({ profile }: Props) {
       {viewer.kept > 0 && (
         <div className="banner note">構造が崩れる文章 {viewer.kept} 件は、英語のままです。</div>
       )}
-      <div className="content-wrap">
+      <div className={`content-wrap${split ? " split" : ""}`}>
+        {split && (
+          <main className="content source" ref={sourceBox} lang="en" aria-label="原文">
+            <Doc
+              site={profile}
+              url={viewer.url}
+              docUrl={viewer.docUrl}
+              restore={viewer.restore}
+              onScroll={ignoreScroll}
+              html={viewer.sourceHtml}
+              anchor={viewer.anchor}
+              onOpen={viewer.open}
+            />
+          </main>
+        )}
         <main className="content" ref={box}>
           <Doc
             site={profile}

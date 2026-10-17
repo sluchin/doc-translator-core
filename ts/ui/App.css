@@ -152,6 +152,22 @@ input {
   flex-direction: column;
 }
 
+/* 原文と翻訳を並べる (広い画面): 左に原文、右に翻訳 */
+.content-wrap.split {
+  flex-direction: row;
+}
+
+.content-wrap.split .content {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* 原文の側は、標準のスクロールバーを出す (右のスクロールバーは、翻訳の側のもの) */
+.content-wrap.split .content.source {
+  border-right: 1px solid var(--border);
+  scrollbar-width: auto;
+}
+
 .content-wrap .content {
   /* 標準のスクロールバーは隠して、右のスクロールバー (ScrollBar) を使う */
   scrollbar-width: none;

@@ -91,6 +91,8 @@ export interface Viewer {
   title: string;
   /** 表示する本文の HTML. */
   html: string;
+  /** 原文の本文の HTML (原文と翻訳を並べるとき、左に出す). */
+  sourceHtml: string;
   /** 今のページの URL. */
   url: string;
   /** 表示の言語. */
@@ -476,6 +478,7 @@ export function useViewer(profile: SiteProfile): Viewer {
   return {
     title: (translation ? translation.title : entry?.page.title) ?? "",
     html: (translation ? translation.html : entry?.page.html) ?? "",
+    sourceHtml: entry?.page.html ?? "",
     url,
     lang,
     loading,

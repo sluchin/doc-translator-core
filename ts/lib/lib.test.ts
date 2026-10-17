@@ -36,6 +36,7 @@ import {
 } from "./menu";
 import { sanitize } from "./sanitize";
 import { exportStamp } from "./stamp";
+import { syncedTop } from "./syncScroll";
 import {
   compareVersions,
   parseVersions,
@@ -293,6 +294,40 @@ describe("extractPage redirect and no-translate", () => {
     expect(extractPage(html, HOME_URL, { ...site, noTranslateSelectors: [] }).html).not.toContain(
       "notranslate",
     );
+  });
+});
+
+describe("syncScroll", () => {
+  // 原文 (英語) と翻訳 (日本語) で、同じ段落の高さが違う
+  const source = [
+    { top: 100, height: 200 },
+    { top: 300, height: 100 },
+    { top: 400, height: 400 },
+  ];
+  const translated = [
+    { top: 50, height: 100 },
+    { top: 150, height: 300 },
+    { top: 450, height: 200 },
+  ];
+
+  it("keeps the same paragraph at the top of both panes", () => {
+    // 2 つ目の段落の、半分まで
+    expect(syncedTop(source, translated, 350)).toBe(300);
+    expect(syncedTop(translated, source, 300)).toBe(350);
+    // 段落の初め、最後の段落の終わりより下
+    expect(syncedTop(source, translated, 400)).toBe(450);
+    expect(syncedTop(source, translated, 2000)).toBe(650);
+  });
+
+  it("scales the part above the first paragraph", () => {
+    expect(syncedTop(source, translated, 0)).toBe(0);
+    expect(syncedTop(source, translated, 50)).toBe(25);
+    expect(syncedTop([{ top: 0, height: 0 }], [{ top: 10, height: 0 }], 5)).toBe(10);
+  });
+
+  it("gives up when the paragraphs do not match", () => {
+    expect(syncedTop([], [], 10)).toBeUndefined();
+    expect(syncedTop(source, translated.slice(1), 10)).toBeUndefined();
   });
 });
 
