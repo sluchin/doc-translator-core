@@ -17,7 +17,7 @@ const BLOCKS = "h1, h2, h3, h4, h5, h6, p, li, pre, table, dt, dd, blockquote, f
  * @param box スクロールする要素
  * @returns ブロックの位置 (上から順)
  */
-function blocksOf(box: HTMLElement): Block[] {
+export function blocksOf(box: HTMLElement): Block[] {
   const base = box.getBoundingClientRect().top - box.scrollTop;
   return Array.from(box.querySelectorAll(BLOCKS)).map((element) => {
     const rect = element.getBoundingClientRect();

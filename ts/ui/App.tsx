@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import "./App.css";
 import { Doc } from "./Doc";
 import { Drawer } from "./Drawer";
@@ -12,7 +12,8 @@ import { ScrollBar } from "./ScrollBar";
 import { SettingsDialog } from "./SettingsDialog";
 import { isDocUrl, switchedUrl } from "../lib/docUrl";
 import type { SiteProfile } from "../lib/profile";
-import { useSyncScroll } from "./useSyncScroll";
+import { type Block, syncedTop } from "../lib/syncScroll";
+import { blocksOf, useSyncScroll } from "./useSyncScroll";
 import { useViewer } from "./useViewer";
 
 /** 原文と翻訳を並べられる、画面の幅 (PC など). 狭い画面 (スマホ) では、並べない. */
@@ -77,8 +78,26 @@ export default function App({ profile }: Props) {
   // 原文と翻訳を並べるのは、広い画面で、翻訳を表示しているときだけ
   const split = wide && sideBySide && profile.japanese !== true && viewer.lang === "ja";
   useSyncScroll(sourceBox, box, split, viewer.html);
+  // 並べる・閉じる前の、翻訳の側の段落の位置 (幅が変わって、折り返しが変わっても、同じ段落に戻すため)
+  const beforeSplit = useRef<{ blocks: Block[]; top: number }>(undefined);
+
+  useLayoutEffect(() => {
+    const saved = beforeSplit.current;
+    const element = box.current;
+    beforeSplit.current = undefined;
+    if (!saved || !element) {
+      return;
+    }
+    const top = syncedTop(saved.blocks, blocksOf(element), saved.top);
+    if (top !== undefined) {
+      element.scrollTop = top;
+    }
+  }, [split]);
 
   const toggleSideBySide = () => {
+    if (box.current) {
+      beforeSplit.current = { blocks: blocksOf(box.current), top: box.current.scrollTop };
+    }
     const next = !sideBySide;
     setSideBySide(next);
     try {
