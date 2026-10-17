@@ -41,6 +41,22 @@ export function push(nav: Nav, url: string): Nav {
 }
 
 /**
+ * 今のページの履歴を, 別の URL に置き換える (転送のページから, 移り先に移ったとき. 戻るで, 転送のページに戻らない).
+ *
+ * @param nav 履歴
+ * @param url 置き換える URL
+ * @returns 新しい履歴 (履歴が空なら, その URL だけの履歴)
+ */
+export function replace(nav: Nav, url: string): Nav {
+  if (nav.index < 0) {
+    return { entries: [url], index: 0 };
+  }
+  const entries = [...nav.entries];
+  entries[nav.index] = url;
+  return { entries, index: nav.index };
+}
+
+/**
  * 戻れるかを返す.
  *
  * @param nav 履歴

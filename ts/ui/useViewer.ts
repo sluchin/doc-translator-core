@@ -18,6 +18,7 @@ import {
   current,
   forward,
   push,
+  replace,
 } from "../lib/history";
 import { parseHtmlMenu } from "../lib/menu";
 import {
@@ -64,6 +65,9 @@ interface Entry {
 
 /** 覚えておくページの数 (多いものから、古い順に捨てる). */
 const CACHE_PAGES = 30;
+
+/** 転送のページを、続けてたどる回数の上限 (転送が輪になっても、止まる). */
+const MAX_REDIRECTS = 3;
 
 /** 位置を書き込むまでの待ち時間 [ms] (スクロールのたびには、書かない). */
 const SAVE_DELAY_MS = 400;
@@ -251,8 +255,11 @@ export function useViewer(profile: SiteProfile): Viewer {
       .catch(() => undefined);
   }, [profile]);
 
+  // 転送のページから、移り先を開くときに、自分 (show) を呼ぶため
+  const showRef = useRef<(url: string, language: Lang, hops: number) => Promise<void>>(undefined);
+
   const show = useCallback(
-    async (url: string, language: Lang) => {
+    async (url: string, language: Lang, hops = 0): Promise<void> => {
       job.current.aborted = true;
       const signal = { aborted: false };
       job.current = signal;
@@ -273,6 +280,18 @@ export function useViewer(profile: SiteProfile): Viewer {
           if (cache.current.size > CACHE_PAGES) {
             cache.current.delete(cache.current.keys().next().value as string);
           }
+        }
+        // 転送のページなら、移り先を開く (履歴は、移り先に置き換える. 転送が続くときは、3 回まで)
+        const { redirect } = found.page;
+        if (
+          redirect !== undefined &&
+          withoutHash(redirect) !== key &&
+          isDocUrl(redirect, profile) &&
+          hops < MAX_REDIRECTS
+        ) {
+          const target = hashOf(url) ? `${withoutHash(redirect)}#${hashOf(url)}` : redirect;
+          setNav((n) => replace(n, target));
+          return showRef.current?.(target, language, hops + 1);
         }
         setEntry(found);
         if (found.page.menu.length > 0) {
@@ -394,6 +413,10 @@ export function useViewer(profile: SiteProfile): Viewer {
     // source は、プロファイルの定数. ファイルの URL が変わったときだけ、取得する
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceUrl]);
+
+  useEffect(() => {
+    showRef.current = show;
+  }, [show]);
 
   const open = useCallback(
     (url: string) => {

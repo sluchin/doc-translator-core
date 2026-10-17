@@ -22,6 +22,23 @@ export interface DocPage {
   readonly menu: readonly MenuItem[];
   /** ページの中の, 版の一覧 (プロファイルに版の設定があるときだけ. なければ空). */
   readonly versions: readonly VersionChoice[];
+  /** 転送のページ (`<meta http-equiv="refresh">` で, 別のページに移る) なら, 移り先の絶対 URL. */
+  readonly redirect?: string;
+}
+
+/**
+ * ページの `<meta http-equiv="refresh" content="0; url=...">` から, 移り先を読む.
+ *
+ * @param doc ページ
+ * @param url ページの URL (相対の移り先を, 絶対 URL にする)
+ * @returns 移り先の絶対 URL (なければ undefined)
+ */
+function refreshTarget(doc: Document, url: string): string | undefined {
+  const meta = Array.from(doc.querySelectorAll("meta")).find(
+    (element) => element.getAttribute("http-equiv")?.toLowerCase() === "refresh",
+  );
+  const target = /url\s*=\s*['"]?([^'"\s]+)/i.exec(meta?.getAttribute("content") ?? "")?.[1];
+  return target === undefined ? undefined : absoluteUrl(target, url);
 }
 
 /** 本文から取り除く要素 (スクリプトなど. サイトごとの分は, プロファイルで足す). */
@@ -52,6 +69,12 @@ export function extractPage(html: string, url: string, profile: SiteProfile): Do
   content
     .querySelectorAll([...REMOVE, ...profile.removeSelectors].join(", "))
     .forEach((element) => element.remove());
+  if (profile.noTranslateSelectors && profile.noTranslateSelectors.length > 0) {
+    // 関数の宣言などは、表示するが、翻訳しない (「翻訳しない」印の class を付ける)
+    content
+      .querySelectorAll(profile.noTranslateSelectors.join(", "))
+      .forEach((element) => element.classList.add("notranslate"));
+  }
   content.querySelectorAll("a[href]").forEach((a) => {
     a.setAttribute("href", absoluteUrl(a.getAttribute("href") as string, url));
   });
@@ -78,5 +101,12 @@ export function extractPage(html: string, url: string, profile: SiteProfile): Do
     ? parseVersions(doc, profile.versions.selector, profile.versions.pattern, url)
     : [];
 
-  return { url, title, html: sanitize(content.innerHTML), menu, versions };
+  return {
+    url,
+    title,
+    html: sanitize(content.innerHTML),
+    menu,
+    versions,
+    redirect: refreshTarget(doc, url),
+  };
 }

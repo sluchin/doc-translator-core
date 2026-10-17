@@ -15,7 +15,16 @@ import {
   withoutHash,
 } from "./docUrl";
 import type { SiteProfile } from "./profile";
-import { EMPTY_NAV, back, canGoBack, canGoForward, current, forward, push } from "./history";
+import {
+  EMPTY_NAV,
+  back,
+  canGoBack,
+  canGoForward,
+  current,
+  forward,
+  push,
+  replace,
+} from "./history";
 import {
   collectTitles,
   containsCurrent,
@@ -250,6 +259,35 @@ describe("version", () => {
   });
 });
 
+describe("extractPage redirect and no-translate", () => {
+  it("reads the target of the refresh of a redirect page", () => {
+    const stub = `<noscript><meta http-equiv="refresh" content="0; url=/api/core/lib/"/></noscript>
+<meta http-equiv="Refresh" content="1; URL='../../core/lib/'">`;
+    // 最初の meta (noscript の中も含む) を, 絶対 URL にする
+    expect(extractPage(stub, `https://${HOST}/api/latest/lib/`, PROFILE).redirect).toBe(
+      `https://${HOST}/api/core/lib/`,
+    );
+    const quoted = `<meta http-equiv="Refresh" content="1; URL='../../core/lib/'">`;
+    expect(extractPage(quoted, `https://${HOST}/api/latest/lib/`, PROFILE).redirect).toBe(
+      `https://${HOST}/api/core/lib/`,
+    );
+    expect(extractPage(PAGE, HOME_URL, PROFILE).redirect).toBeUndefined();
+    expect(
+      extractPage('<meta http-equiv="refresh" content="5">', HOME_URL, PROFILE).redirect,
+    ).toBeUndefined();
+    expect(extractPage('<meta name="x" content="y">', HOME_URL, PROFILE).redirect).toBeUndefined();
+  });
+
+  it("marks the elements that are shown but not translated", () => {
+    const html = `<main><p>Use <span class="sig2">fun listOf()</span> here.</p></main>`;
+    const site = { ...PROFILE, contentSelectors: ["main"], noTranslateSelectors: [".sig2"] };
+    expect(extractPage(html, HOME_URL, site).html).toContain('class="sig2 notranslate"');
+    expect(extractPage(html, HOME_URL, { ...site, noTranslateSelectors: [] }).html).not.toContain(
+      "notranslate",
+    );
+  });
+});
+
 describe("stamp", () => {
   it("makes the date and the time of the export file name", () => {
     expect(exportStamp(new Date(2026, 9, 7, 9, 5))).toBe("20261007-0905");
@@ -258,6 +296,14 @@ describe("stamp", () => {
 });
 
 describe("history", () => {
+  it("replaces the current page (the page that redirects)", () => {
+    const nav = replace(push(push(EMPTY_NAV, "a"), "stub"), "target");
+    expect(nav.entries).toEqual(["a", "target"]);
+    expect(current(nav)).toBe("target");
+    expect(canGoBack(nav)).toBe(true);
+    expect(replace(EMPTY_NAV, "x")).toEqual({ entries: ["x"], index: 0 });
+  });
+
   it("pushes, goes back and forward, and drops the forward pages", () => {
     let nav = push(push(push(EMPTY_NAV, "a"), "b"), "c");
     expect(current(nav)).toBe("c");

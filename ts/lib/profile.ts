@@ -71,6 +71,8 @@ export interface SiteProfile {
   readonly contentSelectors: readonly string[];
   /** 本文から取り除く要素の CSS セレクタ (スクリプトなどは, 共通で取り除く). */
   readonly removeSelectors: readonly string[];
+  /** 本文の中で, 表示するが, 翻訳しない要素の CSS セレクタ (関数の宣言など. なければ, 共通の決まりだけ). */
+  readonly noTranslateSelectors?: readonly string[];
   /** コードの中で、取り除く行 (サイトの JavaScript が隠す印など. 行全体に合わせる. なければ、取り除かない). */
   readonly dropCodeLines?: RegExp;
   /** タイトルの末尾の, サイト名 (取り除く). */
