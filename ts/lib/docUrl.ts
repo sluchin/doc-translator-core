@@ -10,16 +10,21 @@ import type { SiteProfile, SiteTab } from "./profile";
  * URL が, アプリの中で開いてよい, ドキュメントのページかを確かめる.
  *
  * @param url URL
- * @param site サイトの設定 (ホストと, パスの先頭. タブがあれば, どれかのタブのパスの先頭)
+ * @param site サイトの設定 (ホストと, パスの先頭とほかのパスの先頭. タブがあれば, どれかのタブのパスの先頭)
  * @returns https で, ホストが一致して, パスが先頭に合うなら true
  */
 export function isDocUrl(
   url: string,
-  site: Pick<SiteProfile, "host" | "pathPrefix" | "alt" | "tabs" | "versions">,
+  site: Pick<
+    SiteProfile,
+    "host" | "pathPrefix" | "otherPathPrefixes" | "alt" | "tabs" | "versions"
+  >,
 ): boolean {
   try {
     const parsed = new URL(url);
-    const prefixes = site.tabs ? site.tabs.map((tab) => tab.pathPrefix) : [site.pathPrefix];
+    const prefixes = site.tabs
+      ? site.tabs.map((tab) => tab.pathPrefix)
+      : [site.pathPrefix, ...(site.otherPathPrefixes ?? [])];
     const path = pathWithoutVersion(parsed.pathname, site.versions?.pattern);
     return (
       parsed.protocol === "https:" &&

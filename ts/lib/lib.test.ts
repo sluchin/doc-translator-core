@@ -122,6 +122,14 @@ describe("docUrl", () => {
     expect(switchedUrl("not a url", both)).toBe("not a url");
   });
 
+  it("accepts the other path prefixes without tabs", () => {
+    const wider = { ...PROFILE, otherPathPrefixes: ["/api/"] };
+    expect(isDocUrl(`https://${HOST}/api/a.html`, wider)).toBe(true);
+    expect(isDocUrl(`https://${HOST}/latest/a.html`, wider)).toBe(true);
+    expect(isDocUrl(`https://${HOST}/other/a.html`, wider)).toBe(false);
+    expect(isDocUrl(`https://${HOST}/api/a.html`, PROFILE)).toBe(false);
+  });
+
   it("accepts the pages of the tabs only, and finds the tab of a page", () => {
     const tabs = [
       { label: "A", pathPrefix: "/a/", homeUrl: `https://${HOST}/a/index.html` },
