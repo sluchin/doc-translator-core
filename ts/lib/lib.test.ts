@@ -26,6 +26,7 @@ import {
   withTitles,
 } from "./menu";
 import { sanitize } from "./sanitize";
+import { exportStamp } from "./stamp";
 import {
   compareVersions,
   parseVersions,
@@ -246,6 +247,13 @@ describe("version", () => {
       versions: { pattern: PATTERN, list: { url: "https://a/v", parse: () => [] } },
     };
     expect(extractPage(html, `https://${HOST}/2.0.0/a.html`, listed).versions).toEqual([]);
+  });
+});
+
+describe("stamp", () => {
+  it("makes the date and the time of the export file name", () => {
+    expect(exportStamp(new Date(2026, 9, 7, 9, 5))).toBe("20261007-0905");
+    expect(exportStamp(new Date(2026, 11, 31, 23, 59))).toBe("20261231-2359");
   });
 });
 

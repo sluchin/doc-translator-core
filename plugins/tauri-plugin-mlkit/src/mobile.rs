@@ -8,7 +8,7 @@ use tauri::{
     plugin::{PluginApi, PluginHandle},
 };
 
-use crate::models::{TranslateRequest, TranslateResponse};
+use crate::models::{ShareRequest, ShareResponse, TranslateRequest, TranslateResponse};
 
 #[cfg(target_os = "ios")]
 compile_error!("This plugin supports Android only");
@@ -35,5 +35,17 @@ impl<R: Runtime> Mlkit<R> {
             .await?;
 
         Ok(response.texts)
+    }
+
+    /// ファイルを, Google Drive のアプリの「ドライブに保存」の画面に渡す (Drive がなければ, 共有先の一覧).
+    ///
+    /// ファイルは, アプリのキャッシュのディレクトリに置く (Android の `FileProvider` が, そこだけを渡せる).
+    pub async fn share_to_drive(&self, path: String) -> crate::Result<()> {
+        let _: ShareResponse = self
+            .0
+            .run_mobile_plugin_async("shareToDrive", ShareRequest { path })
+            .await?;
+
+        Ok(())
     }
 }

@@ -75,7 +75,14 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
     setCacheMessage(undefined);
     try {
       if (kind === "export") {
-        setCacheMessage((await api.exportCache()) ? "書き出しました。" : undefined);
+        const exported = await api.exportCache();
+        setCacheMessage(
+          exported === "saved"
+            ? "書き出しました。"
+            : exported === "shared"
+              ? "Google Drive を開きました。保存先のフォルダを選んで、保存してください。"
+              : undefined,
+        );
       } else {
         const added = await api.importCache();
         setCacheMessage(added === null ? undefined : `読み込みました (新しい翻訳 ${added} 件)。`);

@@ -218,20 +218,71 @@ fn schedule_save(app: &tauri::AppHandle) {
     });
 }
 
-/// 翻訳のキャッシュを, 利用者が選んだ場所に書き出す (保存の画面を開く. Android では, Google Drive も選べる).
+/// 書き出すファイルの名前 (サイトのホストと, 日時). 日時が数字とハイフンでなければ, 日時を付けない.
+pub fn export_name(host: &str, stamp: &str) -> String {
+    let base = format!("{}-cache", host.replace('.', "-"));
+    if !stamp.is_empty() && stamp.chars().all(|c| c.is_ascii_digit() || c == '-') {
+        format!("{base}-{stamp}.json")
+    } else {
+        format!("{base}.json")
+    }
+}
+
+/// 書き出しの結果.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "lowercase")]
+enum Exported {
+    /// 保存の画面で, 保存した (PC).
+    Saved,
+    /// Google Drive のアプリ (なければ, 共有先の一覧) に渡した. 保存は, 利用者が Drive の画面で行う (Android).
+    Shared,
+    /// 保存の画面で, やめた.
+    Cancelled,
+}
+
+/// 翻訳のキャッシュを書き出す.
 ///
-/// 別の端末で [`import_cache`] で読み込むと, 翻訳を引き継げる. 書き出したら true, やめたら false.
+/// Android は, Google Drive のアプリの「ドライブに保存」の画面に渡す (Android の保存の画面は, 機種によって,
+/// Drive を選べない). PC は, 保存の画面を開く (PC 版の Google Drive のフォルダも選べる).
+/// 別の端末で [`import_cache`] で読み込むと, 翻訳を引き継げる.
+///
+/// `stamp` は, 書き出した日時 (画面が, 端末の時刻で作る. 例: `20261017-1530`). Google Drive は, 同じ名前でも
+/// 上書きしないので, 名前に日時を入れて, どれが新しいか分かるようにする.
 #[tauri::command]
-async fn export_cache(app: tauri::AppHandle, state: State<'_, AppState>) -> Result<bool, String> {
+async fn export_cache(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    stamp: String,
+) -> Result<Exported, String> {
     let snapshot = state.cache.lock().map_err(|e| e.to_string())?.snapshot();
     // ファイルの名前は, アプリ (サイト) ごとに分ける (別のアプリのキャッシュと, 取り違えない)
-    let name = format!("{}-cache.json", state.site.host.replace('.', "-"));
+    let name = export_name(state.site.host, &stamp);
+    if MLKIT_AVAILABLE {
+        // Android: キャッシュのディレクトリに書いて, Drive に渡す (`FileProvider` が渡せるのは, そこだけ)
+        use tauri_plugin_mlkit::MlkitExt;
+
+        let dir = app.path().app_cache_dir().map_err(|e| e.to_string())?;
+        let path = dir.join(&name);
+        let file = path.clone();
+        tokio::task::spawn_blocking(move || -> std::io::Result<()> {
+            std::fs::create_dir_all(&dir)?;
+            std::fs::write(file, translate::entries_to_json(&snapshot))
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
+        app.mlkit()
+            .share_to_drive(path.to_string_lossy().into_owned())
+            .await
+            .map_err(|e| e.to_string())?;
+        return Ok(Exported::Shared);
+    }
     let dialog = app.dialog().file().set_file_name(name);
     let Some(path) = tokio::task::spawn_blocking(move || dialog.blocking_save_file())
         .await
         .map_err(|e| e.to_string())?
     else {
-        return Ok(false);
+        return Ok(Exported::Cancelled);
     };
     let fs_app = app.clone();
     tokio::task::spawn_blocking(move || -> Result<(), String> {
@@ -244,7 +295,7 @@ async fn export_cache(app: tauri::AppHandle, state: State<'_, AppState>) -> Resu
     .await
     .map_err(|e| e.to_string())??;
 
-    Ok(true)
+    Ok(Exported::Saved)
 }
 
 /// 書き出したキャッシュを読み込んで, 端末のキャッシュに足し合わせる (選択の画面を開く).

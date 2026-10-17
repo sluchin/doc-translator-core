@@ -17,3 +17,14 @@ pub struct TranslateResponse {
     /// 翻訳された文章 (日本語のテキスト. 依頼と同じ数, 同じ順).
     pub texts: Vec<String>,
 }
+
+/// Kotlin 側への, ファイルを Google Drive に渡す依頼.
+#[derive(Debug, Serialize)]
+pub struct ShareRequest {
+    /// 渡すファイルのパス (アプリのキャッシュのディレクトリの中).
+    pub path: String,
+}
+
+/// Kotlin 側からの, ファイルを渡したときの応答 (中身はない).
+#[derive(Debug, Deserialize)]
+pub struct ShareResponse {}

@@ -5,6 +5,7 @@
  */
 
 import { invoke } from "@tauri-apps/api/core";
+import { exportStamp } from "../lib/stamp";
 
 /** API キーがないときの、翻訳のエラー (Rust 側と合わせる). */
 export const NO_API_KEY = "NO_API_KEY";
@@ -112,13 +113,16 @@ export function setSettings(update: SettingsUpdate): Promise<SettingsView> {
   return invoke<SettingsView>("set_settings", { update });
 }
 
+/** 書き出しの結果: 保存した (PC)、Google Drive に渡した (Android)、やめた. */
+export type Exported = "saved" | "shared" | "cancelled";
+
 /**
- * 翻訳のキャッシュを書き出す (保存の画面を開く. Android では、Google Drive も選べる).
+ * 翻訳のキャッシュを書き出す (Android は Google Drive のアプリに渡す. PC は保存の画面を開く).
  *
- * @returns 書き出したら true、やめたら false
+ * @returns 書き出しの結果
  */
-export function exportCache(): Promise<boolean> {
-  return invoke<boolean>("export_cache");
+export function exportCache(): Promise<Exported> {
+  return invoke<Exported>("export_cache", { stamp: exportStamp(new Date()) });
 }
 
 /**

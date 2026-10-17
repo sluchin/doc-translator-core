@@ -21,4 +21,9 @@ impl<R: Runtime> Mlkit<R> {
     pub async fn translate(&self, _texts: Vec<String>) -> crate::Result<Vec<String>> {
         Err(crate::Error::Unsupported)
     }
+
+    /// ファイルを Google Drive に渡す (PC では, 使えない. 保存の画面を使う).
+    pub async fn share_to_drive(&self, _path: String) -> crate::Result<()> {
+        Err(crate::Error::Unsupported)
+    }
 }
