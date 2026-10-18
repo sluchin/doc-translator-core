@@ -113,14 +113,17 @@ async fn check_mlkit(app: tauri::AppHandle) -> Result<String, String> {
 
 /// 文章 (HTML の断片) を日本語に翻訳する. 同じ文章は, キャッシュから返す.
 ///
-/// `scope` (ドキュメントの版など) があれば, その範囲ごとに, 別のキャッシュにする.
+/// `scope` (ドキュメントの版など) があれば, その範囲ごとに, 別のキャッシュにする. `fresh` なら,
+/// キャッシュにある文章も, 翻訳し直す.
 #[tauri::command]
 async fn translate(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
     texts: Vec<String>,
     scope: Option<String>,
+    fresh: Option<bool>,
 ) -> Result<Vec<String>, String> {
+    let fresh = fresh.unwrap_or(false);
     let (provider, key, model, parallel) = {
         let settings = state.settings.lock().map_err(|e| e.to_string())?;
         let key = settings
@@ -151,6 +154,7 @@ async fn translate(
                 &GoogleBackend::new(client, key),
                 &texts,
                 batch,
+                fresh,
             )
             .await
         }
@@ -161,6 +165,7 @@ async fn translate(
                 &GeminiBackend::new(client, key, model),
                 &texts,
                 batch,
+                fresh,
             )
             .await
         }
@@ -171,6 +176,7 @@ async fn translate(
                 &PlainBackend::new(GoogleFree::new(client, parallel)),
                 &texts,
                 batch,
+                fresh,
             )
             .await
         }
@@ -184,6 +190,7 @@ async fn translate(
                 &PlainBackend::new(MlKit { app: app.clone() }),
                 &texts,
                 batch,
+                fresh,
             )
             .await
         }
@@ -347,8 +354,9 @@ async fn translate_with<B: Backend>(
     backend: &B,
     texts: &[String],
     batch: usize,
+    fresh: bool,
 ) -> Result<(Vec<String>, usize), String> {
-    translate::translate_with_cache(&state.cache, backend, namespace, texts, batch).await
+    translate::translate_with_cache(&state.cache, backend, namespace, texts, batch, fresh).await
 }
 
 /// キャッシュにある翻訳を返す (通信しない. 今のサービスのキャッシュ. ない文章は, null).

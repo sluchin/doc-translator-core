@@ -55,10 +55,11 @@ export function checkMlkit(): Promise<string> {
  *
  * @param texts 文章
  * @param scope キャッシュを分ける範囲 (ドキュメントの版. なければ、分けない)
+ * @param fresh キャッシュにある文章も、翻訳し直すか (「翻訳し直す」のとき)
  * @returns 翻訳 (同じ数、同じ順)
  */
-export function translate(texts: string[], scope?: string): Promise<string[]> {
-  return invoke<string[]>("translate", { texts, scope });
+export function translate(texts: string[], scope?: string, fresh = false): Promise<string[]> {
+  return invoke<string[]>("translate", { texts, scope, fresh });
 }
 
 /**

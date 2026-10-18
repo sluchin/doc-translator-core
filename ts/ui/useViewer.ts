@@ -47,6 +47,7 @@ import {
   GEMINI_LIMITS,
   GOOGLE_LIMITS,
   MLKIT_LIMITS,
+  noLookup,
   type Progress,
   type TranslateFn,
   type TranslatedPage,
@@ -169,6 +170,10 @@ export interface Viewer {
   toggleLang: () => void;
   /** 翻訳をやり直す (翻訳サービスや API キーを変えたあとなど. 覚えていた翻訳は、捨てる). */
   retry: () => void;
+  /** 今のページを取り直して、翻訳し直す (翻訳のキャッシュも使わない. 下に引いたとき). */
+  reload: () => void;
+  /** 取得と翻訳を止める (翻訳できた分は、そのまま表示する). */
+  cancel: () => void;
 }
 
 /**
@@ -264,10 +269,11 @@ export function useViewer(profile: SiteProfile): Viewer {
   }, [profile]);
 
   // 転送のページから、移り先を開くときに、自分 (show) を呼ぶため
-  const showRef = useRef<(url: string, language: Lang, hops: number) => Promise<void>>(undefined);
+  const showRef =
+    useRef<(url: string, language: Lang, hops: number, fresh: boolean) => Promise<void>>(undefined);
 
   const show = useCallback(
-    async (url: string, language: Lang, hops = 0): Promise<void> => {
+    async (url: string, language: Lang, hops = 0, fresh = false): Promise<void> => {
       job.current.aborted = true;
       const signal = { aborted: false };
       job.current = signal;
@@ -279,6 +285,10 @@ export function useViewer(profile: SiteProfile): Viewer {
       setNeedsKey(false);
       setProgress(undefined);
       setAnchor(hashOf(url));
+      if (fresh) {
+        // 取り直す (サイトが更新されているかもしれない)
+        cache.current.delete(key);
+      }
       try {
         let found = cache.current.get(key);
         if (!found) {
@@ -299,7 +309,7 @@ export function useViewer(profile: SiteProfile): Viewer {
         ) {
           const target = hashOf(url) ? `${withoutHash(redirect)}#${hashOf(url)}` : redirect;
           setNav((n) => replace(n, target));
-          return showRef.current?.(target, language, hops + 1);
+          return showRef.current?.(target, language, hops + 1, fresh);
         }
         setEntry(found);
         if (found.page.menu.length > 0) {
@@ -326,7 +336,7 @@ export function useViewer(profile: SiteProfile): Viewer {
             : await loadAutoVersion();
           const translated = await translatePage(
             found.page,
-            (texts) => api.translate(texts, scope),
+            (texts) => api.translate(texts, scope, fresh),
             // 別のページに移ったあとは、前のページの経過を出さない
             (next) => !signal.aborted && setProgress(next),
             signal,
@@ -338,7 +348,8 @@ export function useViewer(profile: SiteProfile): Viewer {
                 setEntry({ ...found });
               }
             },
-            (texts) => api.lookupCache(texts, scope),
+            // 翻訳し直すときは、キャッシュの翻訳を先に出さない
+            fresh ? noLookup : (texts) => api.lookupCache(texts, scope),
           );
           found.translated = translated;
           found.partial = undefined;
@@ -554,6 +565,17 @@ export function useViewer(profile: SiteProfile): Viewer {
         found.partial = undefined;
       });
       void show(current(nav) as string, lang);
+    },
+    reload: () => {
+      log.info("Reloading and translating again");
+      void show(current(nav) as string, lang, 0, true);
+    },
+    cancel: () => {
+      log.info("Cancelled the loading and the translation");
+      // 翻訳の途中の経過は、出さなくなる. 翻訳できた分 (partial) は、表示したまま
+      job.current.aborted = true;
+      setLoading(false);
+      setProgress(undefined);
     },
   };
 }

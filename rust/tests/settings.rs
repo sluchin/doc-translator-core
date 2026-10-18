@@ -78,17 +78,52 @@ fn keys_are_kept_cleared_or_replaced() {
     settings.apply(&update(Provider::Google, None, Some("   "), ""));
 
     assert_eq!(settings.api_key.as_deref(), Some("a"));
-    assert_eq!(settings.gemini_key, None);
+    // 消したキーは, 空にする (まだ入れていないキー (None) と, 区別する)
+    assert_eq!(settings.gemini_key.as_deref(), Some(""));
+    assert!(!settings.view(false).has_gemini_key);
+    settings.provider = Provider::Gemini;
+    assert_eq!(settings.key_for_provider(), None);
     assert_eq!(settings.gemini_model, DEFAULT_GEMINI_MODEL);
+}
+
+#[test]
+fn fills_the_keys_not_entered_yet_from_the_build() {
+    let dir = temp_dir("build-keys");
+    // ファイルがなければ, ビルドのときのキー
+    let fresh = Settings::load_with_keys(&dir, Some("g"), Some("m"));
+    assert_eq!(fresh.api_key.as_deref(), Some("g"));
+    assert_eq!(fresh.gemini_key.as_deref(), Some("m"));
+    // まだ入れていないキー (null) は, ビルドのときのキー. 入れたキーと, 消したキーは, そのまま
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(
+        dir.join(FILE_NAME),
+        r#"{"provider":"gemini","api_key":null,"gemini_key":"mine","free_parallel":1}"#,
+    )
+    .unwrap();
+    let saved = Settings::load_with_keys(&dir, Some("g"), Some("m"));
+    assert_eq!(saved.api_key.as_deref(), Some("g"));
+    assert_eq!(saved.gemini_key.as_deref(), Some("mine"));
+    assert_eq!(saved.free_parallel, 1);
+    fs::write(dir.join(FILE_NAME), r#"{"api_key":"","gemini_key":null}"#).unwrap();
+    let cleared = Settings::load_with_keys(&dir, Some("g"), None);
+    assert_eq!(cleared.api_key.as_deref(), Some(""));
+    assert_eq!(cleared.gemini_key, None);
+    let _ = fs::remove_dir_all(&dir);
 }
 
 #[test]
 fn falls_back_to_the_default() {
     let dir = temp_dir("missing");
-    assert_eq!(Settings::load(&dir), Settings::default());
+    assert_eq!(
+        Settings::load_with_keys(&dir, None, None),
+        Settings::with_keys(None, None)
+    );
     fs::create_dir_all(&dir).unwrap();
     fs::write(dir.join(FILE_NAME), "not json").unwrap();
-    assert_eq!(Settings::load(&dir), Settings::default());
+    assert_eq!(
+        Settings::load_with_keys(&dir, None, None),
+        Settings::with_keys(None, None)
+    );
     // 古い形式 (キーだけ) も読める
     fs::write(dir.join(FILE_NAME), r#"{"api_key":"old"}"#).unwrap();
     assert_eq!(Settings::load(&dir).api_key.as_deref(), Some("old"));
@@ -124,9 +159,10 @@ fn picks_the_key_of_the_provider_and_hides_the_keys() {
     assert_eq!(Provider::Googlefree.namespace("m1"), "googlefree");
     assert_eq!(Settings::default().provider, Provider::Googlefree);
     assert_eq!(Settings::default().key_for_provider(), Some(""));
+    // キーのない設定 (Settings::default() は, ビルドのときの環境変数にキーがあれば, それを持つ)
     let google = Settings {
         provider: Provider::Google,
-        ..Settings::default()
+        ..Settings::with_keys(None, None)
     };
     assert_eq!(google.key_for_provider(), None);
 }

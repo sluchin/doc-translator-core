@@ -239,6 +239,17 @@ input {
   font-size: 0.9rem;
 }
 
+/* 本文を下に引いているときの案内 (引いた距離だけ、高くなる) */
+.pull {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+  padding-bottom: 6px;
+  color: var(--muted, inherit);
+  font-size: 0.85rem;
+}
+
 .banner.error {
   color: var(--error);
 }

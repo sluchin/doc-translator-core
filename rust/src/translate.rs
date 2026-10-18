@@ -211,12 +211,14 @@ pub fn lookup_cache(
 ///
 /// キャッシュにない文章は, `batch` 個ずつバックエンドに渡して, 翻訳できたらすぐにキャッシュに入れる
 /// (途中で断られても, それまでに翻訳できた分は, 捨てない). 返すのは, 翻訳と, キャッシュに足した数.
+/// `fresh` なら, キャッシュにある文章も, 翻訳し直して, キャッシュを書き換える (画面の「翻訳し直す」).
 pub async fn translate_with_cache<B: Backend>(
     cache: &Mutex<Cache>,
     backend: &B,
     namespace: &str,
     texts: &[String],
     batch: usize,
+    fresh: bool,
 ) -> Result<(Vec<String>, usize), String> {
     let keys: Vec<String> = texts
         .iter()
@@ -226,7 +228,7 @@ pub async fn translate_with_cache<B: Backend>(
     {
         let guard = cache.lock().map_err(|e| e.to_string())?;
         for (key, text) in keys.iter().zip(texts) {
-            if guard.get(key).is_none() && seen.insert(key.clone()) {
+            if (fresh || guard.get(key).is_none()) && seen.insert(key.clone()) {
                 missing.push(text.clone());
             }
         }

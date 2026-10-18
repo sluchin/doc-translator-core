@@ -18,7 +18,9 @@ import { logToBackend } from "./api";
 import type { SiteProfile } from "../lib/profile";
 import { type Block, syncedTop } from "../lib/syncScroll";
 import { blocksOf, useSyncScroll } from "./useSyncScroll";
+import { usePullRefresh } from "./usePullRefresh";
 import { useViewer } from "./useViewer";
+import { PULL_THRESHOLD } from "../lib/pull";
 
 // ログを設定する (開発版はデバッグ以上, リリース版は情報以上. Rust 側のログファイルにも残す)
 setupLog(import.meta.env.DEV, logToBackend);
@@ -153,6 +155,9 @@ export default function App({ profile }: Props) {
     }
   };
   const [address, setAddress] = useState<string>();
+  const busy = viewer.loading || viewer.progress !== undefined;
+  // 本文を一番上で下に引いて離すと、取り直して、翻訳し直す (取得や翻訳の最中は、引けない)
+  const pulled = usePullRefresh(box, viewer.reload, !busy);
 
   useEffect(() => {
     document.title = viewer.title ? `${viewer.title} - ${profile.name}` : profile.name;
@@ -199,6 +204,18 @@ export default function App({ profile }: Props) {
           onKeyDown={(event) => event.key === "Enter" && submit()}
           onBlur={() => setAddress(undefined)}
         />
+        <button
+          onClick={viewer.reload}
+          disabled={busy}
+          aria-label={profile.japanese === true ? "更新" : "翻訳し直す"}
+          title={
+            profile.japanese === true
+              ? "ページを取り直す"
+              : "ページを取り直して、翻訳し直す (翻訳のキャッシュも使わない)"
+          }
+        >
+          ⟳
+        </button>
         <button
           onClick={() => openInBrowser(viewer.url)}
           aria-label="Chrome で開く"
@@ -273,6 +290,16 @@ export default function App({ profile }: Props) {
             value={viewer.progress?.done ?? undefined}
             max={viewer.progress?.total ?? undefined}
           />
+          <button onClick={viewer.cancel}>中止</button>
+        </div>
+      )}
+      {pulled > 0 && (
+        <div className="pull" style={{ height: pulled }} aria-hidden="true">
+          {pulled >= PULL_THRESHOLD
+            ? "離すと更新します"
+            : profile.japanese === true
+              ? "↓ 引いて更新"
+              : "↓ 引いて翻訳し直す"}
         </div>
       )}
       {viewer.needsKey && (
