@@ -246,18 +246,20 @@ export default function App({ profile }: Props) {
         )}
         <button
           onClick={toggleSiteLook}
-          aria-pressed={siteLookOn}
-          title="サイトの見た目 (サイトの CSS) で表示する"
+          title={
+            siteLookOn
+              ? "アプリのシンプルな表示に戻します"
+              : "サイトの CSS で表示します。見出し、コード、表などが、サイトと同じ見た目になります"
+          }
         >
-          {siteLookOn ? "アプリの見た目" : "サイトの見た目"}
+          {/* ボタンの名前は、押すと何が起きるか (今の状態ではない) */}
+          {siteLookOn ? "元に戻す" : "サイト風にする"}
         </button>
         {profile.japanese !== true && wide && (
-          <button onClick={toggleSideBySide} aria-pressed={sideBySide}>
-            {sideBySide ? "原文を閉じる" : "原文を並べる"}
-          </button>
+          <button onClick={toggleSideBySide}>{sideBySide ? "原文を閉じる" : "原文を並べる"}</button>
         )}
         {profile.japanese !== true && (
-          <button onClick={viewer.toggleLang} aria-pressed={viewer.lang === "ja"}>
+          <button onClick={viewer.toggleLang}>
             {viewer.lang === "ja" ? "原文に戻す" : "日本語に翻訳"}
           </button>
         )}
