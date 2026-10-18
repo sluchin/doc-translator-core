@@ -130,3 +130,16 @@ fn picks_the_key_of_the_provider_and_hides_the_keys() {
     };
     assert_eq!(google.key_for_provider(), None);
 }
+
+#[test]
+fn takes_the_initial_keys_from_the_build() {
+    let settings = Settings::with_keys(Some(" google "), Some(""));
+    assert_eq!(settings.api_key.as_deref(), Some("google"));
+    assert_eq!(settings.gemini_key, None);
+    assert_eq!(
+        Settings::with_keys(None, Some("gemini"))
+            .gemini_key
+            .as_deref(),
+        Some("gemini")
+    );
+}

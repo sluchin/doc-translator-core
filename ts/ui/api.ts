@@ -5,6 +5,7 @@
  */
 
 import { invoke } from "@tauri-apps/api/core";
+import type { LogLevel } from "../lib/log";
 import { exportStamp } from "../lib/stamp";
 
 /** API キーがないときの、翻訳のエラー (Rust 側と合わせる). */
@@ -132,4 +133,15 @@ export function exportCache(): Promise<Exported> {
  */
 export function importCache(): Promise<number | null> {
   return invoke<number | null>("import_cache");
+}
+
+/**
+ * フロントエンドのログを, Rust 側のログ (標準エラー出力とログファイル) へ送る.
+ *
+ * @param level ログの重大度
+ * @param message ログ
+ * @returns 送り終えたとき
+ */
+export function logToBackend(level: LogLevel, message: string): Promise<void> {
+  return invoke<void>("log_frontend_message", { level, message });
 }

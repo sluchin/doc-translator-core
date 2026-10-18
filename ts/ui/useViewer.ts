@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MenuItem, MenuSource, SiteProfile } from "../lib/profile";
 import * as api from "./api";
+import { log } from "../lib/log";
 import { hashOf, isDocUrl, tabIndexOf, withoutHash } from "../lib/docUrl";
 import { type DocPage, extractPage } from "../lib/extract";
 import {
@@ -344,8 +345,10 @@ export function useViewer(profile: SiteProfile): Viewer {
         if (!(e instanceof AbortedError) && !signal.aborted) {
           const message = String(e);
           if (message.includes(api.NO_API_KEY)) {
+            log.info("No API key for the translation");
             setNeedsKey(true);
           } else {
+            log.warn("Could not show the page", e);
             setError(message);
           }
         }

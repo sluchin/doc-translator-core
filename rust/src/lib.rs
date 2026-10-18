@@ -9,6 +9,7 @@
 
 pub mod docs;
 pub mod free;
+pub mod logging;
 pub mod plain;
 pub mod settings;
 pub mod translate;
@@ -81,7 +82,10 @@ const MLKIT_AVAILABLE: bool = cfg!(target_os = "android");
 /// ドキュメントのページの HTML を取得する.
 #[tauri::command]
 async fn fetch_page(state: State<'_, AppState>, url: String) -> Result<String, String> {
-    docs::fetch_page(&state.client, state.site, &url).await
+    log::debug!("Fetching {}", url);
+    docs::fetch_page(&state.client, state.site, &url)
+        .await
+        .inspect_err(|e| log::warn!("Could not fetch {}: {}", url, e))
 }
 
 /// サイトの JSON ファイル (メニューなど) を取得する.
@@ -396,6 +400,8 @@ pub fn builder(site: Site) -> tauri::Builder<tauri::Wry> {
         .plugin(tauri_plugin_fs::init())
         .setup(move |app| {
             let dir = app.path().app_data_dir()?;
+            logging::init_logging(&logging::log_path(&dir));
+            log::info!("Started for {} ({})", site.host, env!("CARGO_PKG_VERSION"));
             let cache = std::fs::read_to_string(dir.join(CACHE_FILE))
                 .map(|text| translate::load_cache(&text))
                 .unwrap_or_else(|_| translate::load_cache("[]"));
@@ -411,6 +417,7 @@ pub fn builder(site: Site) -> tauri::Builder<tauri::Wry> {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            logging::log_frontend_message,
             fetch_page,
             fetch_json,
             translate,

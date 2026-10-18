@@ -13,6 +13,8 @@
 - **共通のコードを変えるときは 2 つのアプリへの影響を考える。** 引数や型を変えたら、アプリ (`site.ts`、`lib.rs`) も、直す。変えたら、このリポジトリをコミットして push してから、各アプリで、サブモジュールの参照を更新する。
 - セキュリティの決まり (取得はアプリが渡したホストだけ。HTML は必ず `sanitize()` を通す。API キーは画面に返さない) は zephyr-doc の `.claude/CLAUDE.md` と同じ。
 - ドキュメントの文章をリポジトリに置かない。
+- **ログ**: Rust は `log::debug!` / `info!` / `warn!` / `error!` (`rust/src/logging.rs`。標準エラー出力と、アプリのデータの `logs/app.log`)、TypeScript は `ts/lib/log.ts` の `log` (`console.*` を直接使わない。Rust へ送る)。デバッグ版はデバッグ以上、リリース版は情報以上 (判定は、`default_level` と `setupLog` の中)。API キーなどの秘密は書かない。ログの文字は英語。
+- **API キーの初期値**: ビルドのときの環境変数 `DOC_TRANSLATOR_GOOGLE_KEY` と `DOC_TRANSLATOR_GEMINI_KEY` (`Settings::with_keys`。`option_env!`)。キーは実行ファイルに入るので、配るビルドや CI では設定しない。
 
 ## コマンド
 

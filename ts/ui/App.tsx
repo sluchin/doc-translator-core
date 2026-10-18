@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import "./App.css";
 import { Doc } from "./Doc";
@@ -11,10 +12,25 @@ import { Drawer } from "./Drawer";
 import { ScrollBar } from "./ScrollBar";
 import { SettingsDialog } from "./SettingsDialog";
 import { isDocUrl, switchedUrl } from "../lib/docUrl";
+import { log, setupLog } from "../lib/log";
+import { logToBackend } from "./api";
 import type { SiteProfile } from "../lib/profile";
 import { type Block, syncedTop } from "../lib/syncScroll";
 import { blocksOf, useSyncScroll } from "./useSyncScroll";
 import { useViewer } from "./useViewer";
+
+// ログを設定する (開発版はデバッグ以上, リリース版は情報以上. Rust 側のログファイルにも残す)
+setupLog(import.meta.env.DEV, logToBackend);
+
+/**
+ * 今のページを, 端末のブラウザ (Chrome など, 既定のブラウザ) で開く (サイトの元の見た目で見るため).
+ *
+ * @param url ページの URL
+ */
+function openInBrowser(url: string): void {
+  log.info("Opening in the browser");
+  openUrl(url).catch((e: unknown) => log.warn("Could not open the browser", e));
+}
 
 /** 原文と翻訳を並べられる、画面の幅 (PC など). 狭い画面 (スマホ) では、並べない. */
 const WIDE = "(min-width: 900px)";
@@ -153,6 +169,13 @@ export default function App({ profile }: Props) {
           onKeyDown={(event) => event.key === "Enter" && submit()}
           onBlur={() => setAddress(undefined)}
         />
+        <button
+          onClick={() => openInBrowser(viewer.url)}
+          aria-label="Chrome で開く"
+          title="Chrome (既定のブラウザ) で開く"
+        >
+          ↗
+        </button>
         {viewer.versions.length > 0 && (
           <select
             className="version"

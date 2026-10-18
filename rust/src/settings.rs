@@ -70,15 +70,18 @@ pub struct Settings {
     pub free_parallel: usize,
 }
 
+/// ビルドのときに, 環境変数 `DOC_TRANSLATOR_GOOGLE_KEY` に入っていた, Google の API キー (なければ None).
+///
+/// キーは, アプリの実行ファイルに入る (取り出せる) ので, 自分で使うビルドだけで使う (配るビルドでは, 設定しない).
+const BUILD_GOOGLE_KEY: Option<&str> = option_env!("DOC_TRANSLATOR_GOOGLE_KEY");
+
+/// ビルドのときに, 環境変数 `DOC_TRANSLATOR_GEMINI_KEY` に入っていた, Gemini の API キー (なければ None).
+const BUILD_GEMINI_KEY: Option<&str> = option_env!("DOC_TRANSLATOR_GEMINI_KEY");
+
 impl Default for Settings {
+    /// 既定の設定 (API キーは, ビルドのときの環境変数にあれば, それ).
     fn default() -> Self {
-        Self {
-            provider: Provider::default(),
-            api_key: None,
-            gemini_key: None,
-            gemini_model: DEFAULT_GEMINI_MODEL.to_string(),
-            free_parallel: DEFAULT_PARALLEL,
-        }
+        Self::with_keys(BUILD_GOOGLE_KEY, BUILD_GEMINI_KEY)
     }
 }
 
@@ -130,6 +133,25 @@ fn apply_key(current: &mut Option<String>, change: &Option<String>) {
 }
 
 impl Settings {
+    /// API キーの初期値を決めた, 既定の設定を作る (空白だけのキーは, ないものとする).
+    ///
+    /// 保存した設定にキーの項目がなければ, この初期値になる. 画面でキーを消したときは, 消したまま (空) になる.
+    pub fn with_keys(google: Option<&str>, gemini: Option<&str>) -> Self {
+        let key = |value: Option<&str>| {
+            value
+                .map(str::trim)
+                .filter(|v| !v.is_empty())
+                .map(str::to_string)
+        };
+        Self {
+            provider: Provider::default(),
+            api_key: key(google),
+            gemini_key: key(gemini),
+            gemini_model: DEFAULT_GEMINI_MODEL.to_string(),
+            free_parallel: DEFAULT_PARALLEL,
+        }
+    }
+
     /// ディレクトリの設定を読む (なければ, 読めなければ, 既定).
     pub fn load(dir: &Path) -> Self {
         fs::read_to_string(dir.join(FILE_NAME))

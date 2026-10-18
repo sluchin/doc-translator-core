@@ -27,6 +27,33 @@
 
 ML Kit のプラグインは Android のビルドが**アプリの直接の依存**から見つけるので、アプリの `Cargo.toml` にも、書きます。
 
+## API キーの初期値 (ビルドのときの環境変数)
+
+アプリをビルドするときに、環境変数に API キーが入っていれば、それを設定の初期値にします (`rust/src/settings.rs` の `Settings::with_keys`。Rust の `option_env!` で、ビルドのときに読みます)。
+
+| 環境変数                    | キー                                 |
+| :-------------------------- | :----------------------------------- |
+| `DOC_TRANSLATOR_GOOGLE_KEY` | Google Cloud Translation の API キー |
+| `DOC_TRANSLATOR_GEMINI_KEY` | Gemini API のキー                    |
+
+```bash
+DOC_TRANSLATOR_GEMINI_KEY=... npm run tauri:build
+```
+
+- 初期値になるのは、保存した設定に、キーがないときだけです。設定の画面で入れたキーや、消したキーは、そのままです。
+- キーは、アプリの実行ファイルに入ります (取り出せます)。**自分で使うビルドだけで使い、配るビルド (公開するもの、CI の成果物) では、設定しないでください。**
+- 環境変数を変えたら、Cargo が、作り直します。
+
+## ログ
+
+- Rust のログは、標準エラー出力と、アプリのデータのディレクトリの `logs/app.log` に出ます (5 MB を超えると世代送りして、3 世代を残します。`rust/src/logging.rs`)。画面 (TypeScript) のログ (`ts/lib/log.ts` の `log`) も、Rust へ送って (`log_frontend_message`)、同じファイルに残します。
+- レベル: 開発版 (`npm run tauri:dev`) はデバッグ以上、リリース版は情報 (最低限)、警告、エラーを出します。判定は、ログの初期化の中でします (Rust は `default_level`、TypeScript は `setupLog`)。環境変数 `RUST_LOG` で、Rust のレベルを上書きできます。
+- API キーなどの秘密は、ログに書きません。
+
+## ブラウザで開く
+
+ツールバーの ↗ (Chrome で開く) で、今のページを、端末の既定のブラウザ (Android では、ふつうは Chrome) で開きます。アプリは、ページの本文だけを取り出して、翻訳して、アプリの見た目で表示するので、サイトの元の見た目 (Chrome での表示) とは違います。元の見た目で見たいときに使います。
+
 ## 開発 (Docker)
 
 ```bash
