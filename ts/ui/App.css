@@ -8,6 +8,7 @@
   --surface: #f4f5f9;
   --code-bg: #f1f3f8;
   --note-bg: #eaf2ff;
+  --ok-bg: #dcf0df;
   --warn-bg: #fff4e0;
   --error: #b3261e;
   color-scheme: light dark;
@@ -23,6 +24,7 @@
     --surface: #1d2028;
     --code-bg: #1b1e27;
     --note-bg: #17283f;
+    --ok-bg: #1a3322;
     --warn-bg: #3a2d14;
     --error: #ff8a80;
   }
@@ -347,6 +349,22 @@ input {
   border-radius: 6px;
   padding: 4px 12px;
   margin: 1em 0;
+}
+
+/* Kotlin (Writerside) の囲み: 種類 (data-type) ごとに、サイトに近い色にする (tip は灰色、note は緑) */
+.doc aside.prompt {
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 4px 16px;
+  margin: 1em 0;
+}
+
+.doc aside.prompt[data-type="note"] {
+  background: var(--ok-bg);
+}
+
+.doc aside.prompt[data-type="warning"] {
+  background: var(--warn-bg);
 }
 
 .doc .admonition-title {
