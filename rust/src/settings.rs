@@ -70,13 +70,13 @@ pub struct Settings {
     pub free_parallel: usize,
 }
 
-/// ビルドのときに, 環境変数 `DOC_TRANSLATOR_GOOGLE_KEY` に入っていた, Google の API キー (なければ None).
+/// ビルドのときに, 環境変数 `GOOGLE_CLOUD_TRANSLATION_API_KEY` に入っていた, Google の API キー (なければ None).
 ///
 /// キーは, アプリの実行ファイルに入る (取り出せる) ので, 自分で使うビルドだけで使う (配るビルドでは, 設定しない).
-const BUILD_GOOGLE_KEY: Option<&str> = option_env!("DOC_TRANSLATOR_GOOGLE_KEY");
+const BUILD_GOOGLE_KEY: Option<&str> = option_env!("GOOGLE_CLOUD_TRANSLATION_API_KEY");
 
-/// ビルドのときに, 環境変数 `DOC_TRANSLATOR_GEMINI_KEY` に入っていた, Gemini の API キー (なければ None).
-const BUILD_GEMINI_KEY: Option<&str> = option_env!("DOC_TRANSLATOR_GEMINI_KEY");
+/// ビルドのときに, 環境変数 `GEMINI_API_KEY` に入っていた, Gemini の API キー (なければ None).
+const BUILD_GEMINI_KEY: Option<&str> = option_env!("GEMINI_API_KEY");
 
 impl Default for Settings {
     /// 既定の設定 (API キーは, ビルドのときの環境変数にあれば, それ).

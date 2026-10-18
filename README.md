@@ -31,13 +31,13 @@ ML Kit のプラグインは Android のビルドが**アプリの直接の依�
 
 アプリをビルドするときに、環境変数に API キーが入っていれば、それを設定の初期値にします (`rust/src/settings.rs` の `Settings::with_keys`。Rust の `option_env!` で、ビルドのときに読みます)。
 
-| 環境変数                    | キー                                 |
-| :-------------------------- | :----------------------------------- |
-| `DOC_TRANSLATOR_GOOGLE_KEY` | Google Cloud Translation の API キー |
-| `DOC_TRANSLATOR_GEMINI_KEY` | Gemini API のキー                    |
+| 環境変数                           | キー                                 |
+| :--------------------------------- | :----------------------------------- |
+| `GOOGLE_CLOUD_TRANSLATION_API_KEY` | Google Cloud Translation の API キー |
+| `GEMINI_API_KEY`                   | Gemini API のキー                    |
 
 ```bash
-DOC_TRANSLATOR_GEMINI_KEY=... npm run tauri:build
+GEMINI_API_KEY=... npm run tauri:build
 ```
 
 - 初期値になるのは、保存した設定に、キーがないときだけです。設定の画面で入れたキーや、消したキーは、そのままです。
