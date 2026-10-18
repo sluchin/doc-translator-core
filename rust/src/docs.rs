@@ -80,6 +80,8 @@ pub enum Kind {
     Html,
     /// サイトの JSON ファイル (メニューなど).
     Json,
+    /// サイトの CSS (サイトの見た目で表示するため).
+    Css,
 }
 
 /// ページの HTML を取得する.
@@ -87,7 +89,7 @@ pub async fn fetch_page(client: &reqwest::Client, site: Site, url: &str) -> Resu
     fetch_text(client, site, url, Kind::Html).await
 }
 
-/// サイトのテキスト (HTML か JSON) を取得する (ホストが違えば, 通信しないで失敗する).
+/// サイトのテキスト (HTML, JSON, CSS) を取得する (ホストが違えば, 通信しないで失敗する).
 pub async fn fetch_text(
     client: &reqwest::Client,
     site: Site,
@@ -128,6 +130,7 @@ pub fn check_response(
     let accepted = content_type.is_some_and(|value| match kind {
         Kind::Html => value.starts_with("text/html"),
         Kind::Json => value.contains("json") || value.starts_with("text/plain"),
+        Kind::Css => value.starts_with("text/css"),
     });
     if !accepted {
         return Err("The page has an unexpected content type".to_string());

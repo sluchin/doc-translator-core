@@ -32,6 +32,16 @@ export function fetchJson(url: string): Promise<string> {
 }
 
 /**
+ * サイトの CSS を、Rust 側で取得する (サイトの見た目で表示するため. ページと同じホストのものだけ).
+ *
+ * @param url CSS の URL
+ * @returns CSS
+ */
+export function fetchCss(url: string): Promise<string> {
+  return invoke<string>("fetch_css", { url });
+}
+
+/**
  * ML Kit が動くかを確かめる (翻訳のモデルを取得して、短い文章を翻訳する).
  *
  * @returns 翻訳の結果 (失敗したら、例外)

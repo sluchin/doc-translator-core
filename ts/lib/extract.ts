@@ -8,6 +8,7 @@ import { absoluteUrl } from "./docUrl";
 import { parseHtmlMenu } from "./menu";
 import type { MenuItem, SiteProfile } from "./profile";
 import { sanitize } from "./sanitize";
+import { type FrameNode, type SiteStyles, collectFrame, collectStyles } from "./siteLook";
 import { type VersionChoice, parseVersions } from "./version";
 
 /** 取り出したページ. */
@@ -24,6 +25,10 @@ export interface DocPage {
   readonly versions: readonly VersionChoice[];
   /** 転送のページ (`<meta http-equiv="refresh">` で, 別のページに移る) なら, 移り先の絶対 URL. */
   readonly redirect?: string;
+  /** 本文を囲んでいた要素 (サイトの見た目で表示するとき. 前の版で保存したページには, ない). */
+  readonly frame?: readonly FrameNode[];
+  /** サイトの CSS (サイトの見た目で表示するとき. 前の版で保存したページには, ない). */
+  readonly styles?: SiteStyles;
 }
 
 /**
@@ -108,5 +113,7 @@ export function extractPage(html: string, url: string, profile: SiteProfile): Do
     menu,
     versions,
     redirect: refreshTarget(doc, url),
+    frame: collectFrame(root),
+    styles: collectStyles(doc, url),
   };
 }

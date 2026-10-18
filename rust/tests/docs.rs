@@ -62,6 +62,14 @@ fn accepts_json_only_for_the_json_kind() {
     assert!(check_response(200, Some("text/html"), None, json).is_err());
 }
 
+#[test]
+fn accepts_css_only_for_the_css_kind() {
+    let css = Kind::Css;
+    assert!(check_response(200, Some("text/css; charset=utf-8"), None, css).is_ok());
+    assert!(check_response(200, Some("text/html"), None, css).is_err());
+    assert!(check_response(200, Some("text/css"), None, Kind::Html).is_err());
+}
+
 #[tokio::test]
 async fn refuses_other_hosts_without_a_request() {
     let site = Site {

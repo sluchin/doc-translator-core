@@ -11,6 +11,7 @@ import { Doc } from "./Doc";
 import { Drawer } from "./Drawer";
 import { ScrollBar } from "./ScrollBar";
 import { SettingsDialog } from "./SettingsDialog";
+import { SiteDoc } from "./SiteDoc";
 import { isDocUrl, switchedUrl } from "../lib/docUrl";
 import { log, setupLog } from "../lib/log";
 import { logToBackend } from "./api";
@@ -34,6 +35,9 @@ function openInBrowser(url: string): void {
 
 /** 原文と翻訳を並べられる、画面の幅 (PC など). 狭い画面 (スマホ) では、並べない. */
 const WIDE = "(min-width: 900px)";
+
+/** サイトの見た目で表示するかを覚えておく、端末の保存のキー. */
+const SITE_LOOK_KEY = "doc-translator:site-look";
 
 /** 原文を並べるかを覚えておく、端末の保存のキー. */
 const SIDE_BY_SIDE_KEY = "doc-translator:side-by-side";
@@ -71,6 +75,19 @@ function loadSideBySide(): boolean {
   }
 }
 
+/**
+ * サイトの見た目で表示するかを、端末から読む (読めなければ、アプリの見た目).
+ *
+ * @returns サイトの見た目なら true
+ */
+function loadSiteLook(): boolean {
+  try {
+    return window.localStorage.getItem(SITE_LOOK_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 /** アプリの画面の引数. */
 interface Props {
   /** サイトの設定. */
@@ -91,8 +108,12 @@ export default function App({ profile }: Props) {
   const sourceBox = useRef<HTMLElement>(null);
   const wide = useMedia(WIDE);
   const [sideBySide, setSideBySide] = useState(loadSideBySide);
-  // 原文と翻訳を並べるのは、広い画面で、翻訳を表示しているときだけ
-  const split = wide && sideBySide && profile.japanese !== true && viewer.lang === "ja";
+  const [siteLookOn, setSiteLookOn] = useState(loadSiteLook);
+  // サイトの見た目で表示するのは、ページに、その材料 (囲んでいた要素と CSS) があるときだけ
+  const siteLook = siteLookOn && viewer.frame !== undefined && viewer.styles !== undefined;
+  // 原文と翻訳を並べるのは、広い画面で、翻訳を表示しているときだけ (サイトの見た目のときは、並べない)
+  const split =
+    wide && sideBySide && !siteLook && profile.japanese !== true && viewer.lang === "ja";
   useSyncScroll(sourceBox, box, split, viewer.html);
   // 並べる・閉じる前の、翻訳の側の段落の位置 (幅が変わって、折り返しが変わっても、同じ段落に戻すため)
   const beforeSplit = useRef<{ blocks: Block[]; top: number }>(undefined);
@@ -118,6 +139,15 @@ export default function App({ profile }: Props) {
     setSideBySide(next);
     try {
       window.localStorage.setItem(SIDE_BY_SIDE_KEY, next ? "1" : "0");
+    } catch {
+      // 覚えられなくても、今の表示は切り替える
+    }
+  };
+  const toggleSiteLook = () => {
+    const next = !siteLookOn;
+    setSiteLookOn(next);
+    try {
+      window.localStorage.setItem(SITE_LOOK_KEY, next ? "1" : "0");
     } catch {
       // 覚えられなくても、今の表示は切り替える
     }
@@ -197,6 +227,13 @@ export default function App({ profile }: Props) {
               : profile.alt.toLabel}
           </button>
         )}
+        <button
+          onClick={toggleSiteLook}
+          aria-pressed={siteLookOn}
+          title="サイトの見た目 (サイトの CSS) で表示する"
+        >
+          {siteLookOn ? "アプリの見た目" : "サイトの見た目"}
+        </button>
         {profile.japanese !== true && wide && (
           <button onClick={toggleSideBySide} aria-pressed={sideBySide}>
             {sideBySide ? "原文を閉じる" : "原文を並べる"}
@@ -268,17 +305,29 @@ export default function App({ profile }: Props) {
             />
           </main>
         )}
-        <main className="content" ref={box}>
-          <Doc
-            site={profile}
-            url={viewer.url}
-            docUrl={viewer.docUrl}
-            restore={viewer.restore}
-            onScroll={viewer.setScroll}
-            html={viewer.html}
-            anchor={viewer.anchor}
-            onOpen={viewer.open}
-          />
+        <main className={`content${siteLook ? " site-look" : ""}`} ref={box}>
+          {siteLook && viewer.frame && viewer.styles ? (
+            <SiteDoc
+              site={profile}
+              url={viewer.url}
+              frame={viewer.frame}
+              styles={viewer.styles}
+              html={viewer.html}
+              anchor={viewer.anchor}
+              onOpen={viewer.open}
+            />
+          ) : (
+            <Doc
+              site={profile}
+              url={viewer.url}
+              docUrl={viewer.docUrl}
+              restore={viewer.restore}
+              onScroll={viewer.setScroll}
+              html={viewer.html}
+              anchor={viewer.anchor}
+              onOpen={viewer.open}
+            />
+          )}
         </main>
         <ScrollBar
           box={box}

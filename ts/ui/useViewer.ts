@@ -10,6 +10,7 @@ import * as api from "./api";
 import { log } from "../lib/log";
 import { hashOf, isDocUrl, tabIndexOf, withoutHash } from "../lib/docUrl";
 import { type DocPage, extractPage } from "../lib/extract";
+import type { FrameNode, SiteStyles } from "../lib/siteLook";
 import {
   EMPTY_NAV,
   type Nav,
@@ -94,6 +95,10 @@ export interface Viewer {
   html: string;
   /** 原文の本文の HTML (原文と翻訳を並べるとき、左に出す). */
   sourceHtml: string;
+  /** 本文を囲んでいた要素 (サイトの見た目で表示するとき. 前の版で保存したページには、ない). */
+  frame?: readonly FrameNode[];
+  /** サイトの CSS (サイトの見た目で表示するとき. 前の版で保存したページには、ない). */
+  styles?: SiteStyles;
   /** 今のページの URL. */
   url: string;
   /** 表示の言語. */
@@ -482,6 +487,8 @@ export function useViewer(profile: SiteProfile): Viewer {
     title: (translation ? translation.title : entry?.page.title) ?? "",
     html: (translation ? translation.html : entry?.page.html) ?? "",
     sourceHtml: entry?.page.html ?? "",
+    frame: entry?.page.frame,
+    styles: entry?.page.styles,
     url,
     lang,
     loading,

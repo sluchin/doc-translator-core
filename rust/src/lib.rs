@@ -94,6 +94,12 @@ async fn fetch_json(state: State<'_, AppState>, url: String) -> Result<String, S
     docs::fetch_text(&state.client, state.site, &url, docs::Kind::Json).await
 }
 
+/// サイトの CSS を取得する (サイトの見た目で表示するため. ホストが違えば, 通信しないで失敗する).
+#[tauri::command]
+async fn fetch_css(state: State<'_, AppState>, url: String) -> Result<String, String> {
+    docs::fetch_text(&state.client, state.site, &url, docs::Kind::Css).await
+}
+
 /// ML Kit が動くかを確かめる (翻訳のモデルを取得して, 短い文章を翻訳する. 設定の画面から呼ぶ).
 #[tauri::command]
 async fn check_mlkit(app: tauri::AppHandle) -> Result<String, String> {
@@ -420,6 +426,7 @@ pub fn builder(site: Site) -> tauri::Builder<tauri::Wry> {
             logging::log_frontend_message,
             fetch_page,
             fetch_json,
+            fetch_css,
             translate,
             lookup_cache,
             export_cache,

@@ -122,6 +122,13 @@ export interface SiteProfile {
   };
   /** サイトが日本語のとき true (翻訳しない. 原文の切り替えと設定のボタンも出さない). 既定は false. */
   readonly japanese?: boolean;
+  /**
+   * サイトの見た目で表示するときに, `body` に足すクラス (空白で区切る).
+   *
+   * サイトの JavaScript は動かさないので, JavaScript が描き終えたときに付けるクラスがないと, 本文を
+   * 隠したままのサイトがある (Writerside の `app-render-failed` など). なければ, 足さない.
+   */
+  readonly siteLookBodyClass?: string;
   /** メニュー (目次) の取り方 (なければ, メニューを出さない. `tabs` があるときは, タブごとに決めるので, 使わない). */
   readonly menu?: MenuSource;
   /**
