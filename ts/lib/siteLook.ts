@@ -5,6 +5,7 @@
  */
 
 import { absoluteUrl } from "./docUrl";
+import { sanitize } from "./sanitize";
 
 /**
  * 本文を囲んでいた要素 (サイトの見た目で表示するときに, 本文の外側に作り直す).
@@ -192,6 +193,25 @@ export function withBodyClass(frame: readonly FrameNode[], classes = ""): FrameN
       ? { ...node, classes: `${node.classes} ${classes.trim()}`.trim() }
       : node,
   );
+}
+
+/**
+ * サイトの見た目で表示する本文を, サイトの設定の関数で組み直す.
+ *
+ * スクリプトの動かない, 切り離したページの中で組み直して, もう一度, 安全な HTML にする.
+ *
+ * @param html 本文の HTML (安全にしてある)
+ * @param rewrite 本文を組み直す関数 (なければ, そのまま)
+ * @returns 組み直した本文の HTML
+ */
+export function rewriteForSiteLook(html: string, rewrite?: (content: Element) => void): string {
+  if (!rewrite) {
+    return html;
+  }
+  const content = new DOMParser().parseFromString("", "text/html").body;
+  content.innerHTML = html;
+  rewrite(content);
+  return sanitize(content.innerHTML);
 }
 
 /** サイトの見た目で表示するページの材料. */

@@ -5,7 +5,7 @@
  */
 
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { isDocUrl, withoutHash } from "../lib/docUrl";
 import { log } from "../lib/log";
 import type { SiteProfile } from "../lib/profile";
@@ -15,6 +15,7 @@ import {
   absoluteCssUrls,
   buildSiteDocument,
   cssImports,
+  rewriteForSiteLook,
   withBodyClass,
   withMedia,
   withoutImports,
@@ -108,12 +109,18 @@ export function SiteDoc({ site, url, frame, styles, html, anchor, onOpen }: Prop
     };
   }, [styles, url]);
 
+  // サイトの JavaScript が組み直す本文は, 同じ形に組み直す (表示するたびには, 組み直さない)
+  const body = useMemo(
+    () => rewriteForSiteLook(html, site.siteLookRewrite),
+    [html, site.siteLookRewrite],
+  );
+
   const ready = css?.url === url;
   const srcDoc = ready
     ? buildSiteDocument({
         frame: withBodyClass(frame, site.siteLookBodyClass),
         css: css.text,
-        html,
+        html: body,
         url,
       })
     : undefined;

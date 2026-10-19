@@ -14,7 +14,7 @@
 - セキュリティの決まり (取得はアプリが渡したホストだけ。HTML は必ず `sanitize()` を通す。API キーは画面に返さない) は zephyr-doc の `.claude/CLAUDE.md` と同じ。
 - ドキュメントの文章をリポジトリに置かない。
 - **ログ**: Rust は `log::debug!` / `info!` / `warn!` / `error!` (`rust/src/logging.rs`。標準エラー出力と、アプリのデータの `logs/app.log`)、TypeScript は `ts/lib/log.ts` の `log` (`console.*` を直接使わない。Rust へ送る)。デバッグ版はデバッグ以上、リリース版は情報以上 (判定は、`default_level` と `setupLog` の中)。API キーなどの秘密は書かない。ログの文字は英語。
-- **サイトの見た目**: `ts/lib/siteLook.ts` (囲んでいた要素、CSS、ページの組み立て。テストあり) と `ts/ui/SiteDoc.tsx` (CSS の取得と iframe)。iframe は `sandbox="allow-same-origin"` (スクリプトは動かさない。リンクのクリックは、枠の外で受ける)。CSS は Rust の `fetch_css` で、ページと同じホストのものだけ取得する。本文の HTML は、今までどおり `sanitize()` を通す。アプリの CSP の `font-src` に、サイトのホストを入れる。
+- **サイトの見た目**: `ts/lib/siteLook.ts` (囲んでいた要素、CSS、ページの組み立て。テストあり) と `ts/ui/SiteDoc.tsx` (CSS の取得と iframe)。iframe は `sandbox="allow-same-origin"` (スクリプトは動かさない。リンクのクリックは、枠の外で受ける)。CSS は Rust の `fetch_css` で、ページと同じホストのものだけ取得する。本文の HTML は、今までどおり `sanitize()` を通す。サイトの JavaScript が組み直す本文は、アプリが `SiteProfile.siteLookRewrite` で組み直す (`rewriteForSiteLook`。組み直したあとも `sanitize()` を通す)。アプリの CSP の `font-src` に、サイトのホストを入れる。
 - **API キーの初期値**: ビルドのときの環境変数 `GOOGLE_CLOUD_TRANSLATION_API_KEY` と `GEMINI_API_KEY` (`Settings::with_keys`。`option_env!`)。保存した設定の、まだ入れていないキー (null) にも使う (`Settings::load`)。画面で消したキーは、空の文字列で保存して、区別する。キーは実行ファイルに入るので、配るビルドや CI では設定しない。
 
 ## コマンド

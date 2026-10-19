@@ -11,6 +11,7 @@ import {
   collectFrame,
   collectStyles,
   cssImports,
+  rewriteForSiteLook,
   withBodyClass,
   withMedia,
   withoutImports,
@@ -124,6 +125,22 @@ describe("withBodyClass", () => {
       { tag: "body", id: "", classes: "app-render-failed" },
     ]);
     expect(withBodyClass(frame)).toEqual(frame);
+  });
+});
+
+describe("rewriteForSiteLook", () => {
+  it("関数がなければ, 本文をそのまま返す", () => {
+    expect(rewriteForSiteLook("<p>本文</p>")).toBe("<p>本文</p>");
+  });
+
+  it("関数で組み直して, もう一度, 安全な HTML にする", () => {
+    const html = rewriteForSiteLook('<p id="a">本文</p>', (content) => {
+      const p = content.querySelector("p") as Element;
+      p.classList.add("article__p");
+      p.setAttribute("onclick", "alert(1)");
+    });
+
+    expect(html).toBe('<p id="a" class="article__p">本文</p>');
   });
 });
 

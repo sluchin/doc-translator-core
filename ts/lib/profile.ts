@@ -129,6 +129,14 @@ export interface SiteProfile {
    * 隠したままのサイトがある (Writerside の `app-render-failed` など). なければ, 足さない.
    */
   readonly siteLookBodyClass?: string;
+  /**
+   * サイトの見た目で表示するときに, 本文を組み直す (要素を書き換える).
+   *
+   * サイトの JavaScript が本文を組み直してから, CSS を当てるサイトがある (Writerside の注意書きの
+   * 枠など). JavaScript は動かさないので, 同じ形に組み直す. 組み直した本文も, `sanitize()` を通す.
+   * なければ, 組み直さない.
+   */
+  readonly siteLookRewrite?: (content: Element) => void;
   /** メニュー (目次) の取り方 (なければ, メニューを出さない. `tabs` があるときは, タブごとに決めるので, 使わない). */
   readonly menu?: MenuSource;
   /**

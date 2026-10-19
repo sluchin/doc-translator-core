@@ -68,6 +68,7 @@ GEMINI_API_KEY=... npm run tauri:build
 - 表示するときに、CSS を Rust 側で取得し (ページと同じホストのものだけ。`fetch_css`)、`@import` を入れて、`url(...)` を絶対 URL にして、本文の外側に囲んでいた要素を作り直したページを、切り離した枠 (iframe) に表示します (`ts/ui/SiteDoc.tsx`)。
 - 枠の中では、サイトの JavaScript を動かしません (`sandbox` に `allow-scripts` を付けません)。JavaScript で描く部分 (タブの切り替え、コードの色づけ、ヘッダーや目次など本文の外の部分) は、出ないか、動きません。
 - JavaScript が描き終えたときに付けるクラスがないと本文を隠すサイトは、サイトの設定の `siteLookBodyClass` で、`body` に足すクラスを書きます (Kotlin の Writerside は `app-render-failed`)。
+- JavaScript が本文を組み直してから CSS を当てるサイト (Writerside の注意書きの枠など) は、サイトの設定の `siteLookRewrite` で、同じ形に組み直します (`ts/lib/siteLook.ts` の `rewriteForSiteLook`。組み直した本文も、`sanitize()` を通します)。
 - サイトのフォントを使うため、アプリの CSP の `font-src` に、サイトのホストを入れます。
 - 原文と翻訳を並べる表示と、読んだ位置の記録とスクロールバーは、アプリの見た目のときだけです。
 
