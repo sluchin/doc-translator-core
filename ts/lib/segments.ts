@@ -53,12 +53,16 @@ const SKIP = new Set(["PRE", "SCRIPT", "STYLE", "TEXTAREA", "SVG", "MATH"]);
 /** 文の中にあっても, 翻訳しない (そのまま残す) 要素. */
 const ATOMIC = new Set(["CODE", "KBD", "SAMP", "TT", "VAR", "SVG", "MATH", "IMG", "BR", "WBR"]);
 
-/** 翻訳しない要素の class (Sphinx の `highlight` `sig` と, Kotlin のドキュメントの `code-block` など). */
+/**
+ * 翻訳しない要素の class (Sphinx の `highlight` `sig` と, Kotlin のドキュメントの `code-block`
+ * `code-collapse` (畳めるコード. 練習の答えなど) など).
+ */
 const SKIP_CLASSES = [
   "notranslate",
   "highlight",
   "literal-block",
   "code-block",
+  "code-collapse",
   "sig",
   "headerlink",
 ];

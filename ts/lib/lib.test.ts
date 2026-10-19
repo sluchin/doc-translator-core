@@ -418,11 +418,14 @@ fun main() {
     println("x")
 //sampleEnd
 }
+</div><div class="code-collapse">
+fun main() {}
 </div><pre><span>//sampleStart</span></pre></main></body></html>`;
 
   it("drops the marker lines of the plain code and trims the edges", () => {
     const text = extractPage(html, "https://a/", profile).html;
     expect(text).toContain('<div class="code-block">fun main() {\n    println("x")\n}</div>');
+    expect(text).toContain('<div class="code-collapse">fun main() {}</div>');
   });
 
   it("keeps the highlighted code and the code of a profile without the option", () => {

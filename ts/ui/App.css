@@ -296,6 +296,7 @@ input {
 
 .doc pre,
 .doc .code-block,
+.doc .code-collapse,
 .doc code,
 .doc kbd,
 .doc samp {
@@ -311,9 +312,13 @@ input {
   padding: 0.1em 0.3em;
 }
 
-/* .code-block: Kotlin のドキュメントのコードは、pre ではなく、改行つきの文字を持つ div (サイトの JavaScript が整形する) */
+/*
+ * .code-block: Kotlin のドキュメントのコードは、pre ではなく、改行つきの文字を持つ div (サイトの JavaScript が整形する).
+ * .code-collapse は、畳めるコード (練習の答えなど. 畳まずに出す)
+ */
 .doc pre,
-.doc .code-block {
+.doc .code-block,
+.doc .code-collapse {
   background: var(--code-bg);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -322,7 +327,8 @@ input {
   line-height: 1.45;
 }
 
-.doc .code-block {
+.doc .code-block,
+.doc .code-collapse {
   white-space: pre;
 }
 
@@ -365,6 +371,16 @@ input {
 
 .doc aside.prompt[data-type="warning"] {
   background: var(--warn-bg);
+}
+
+/* Kotlin (Writerside) の、題名を上に出す一覧 (練習の問題など): 題名を太字にして、中身を字下げしない */
+.doc dl[data-style="title-top"] > dt {
+  font-weight: 700;
+  margin-top: 1em;
+}
+
+.doc dl[data-style="title-top"] > dd {
+  margin: 0.4em 0 1em;
 }
 
 .doc .admonition-title {

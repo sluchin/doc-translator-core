@@ -88,7 +88,7 @@ export function extractPage(html: string, url: string, profile: SiteProfile): Do
   });
   const { dropCodeLines } = profile;
   if (dropCodeLines) {
-    content.querySelectorAll("pre, .code-block").forEach((code) => {
+    content.querySelectorAll("pre, .code-block, .code-collapse").forEach((code) => {
       if (code.children.length === 0) {
         // 色づけのない、文字だけのコードだけを直す (色づけの要素は、壊さない)
         const lines = (code.textContent as string).split("\n");
