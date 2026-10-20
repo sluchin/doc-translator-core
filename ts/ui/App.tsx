@@ -108,6 +108,8 @@ export default function App({ profile }: Props) {
   const [drawer, setDrawer] = useState(false);
   const box = useRef<HTMLElement>(null);
   const sourceBox = useRef<HTMLElement>(null);
+  // サイトの見た目のときに, 枠 (iframe) の中でスクロールする要素
+  const siteBox = useRef<HTMLElement>(null);
   const wide = useMedia(WIDE);
   const [sideBySide, setSideBySide] = useState(loadSideBySide);
   const [siteLookOn, setSiteLookOn] = useState(loadSiteLook);
@@ -344,6 +346,8 @@ export default function App({ profile }: Props) {
               html={viewer.html}
               anchor={viewer.anchor}
               onOpen={viewer.open}
+              onScroll={viewer.setScroll}
+              scrollerRef={siteBox}
             />
           ) : (
             <Doc
@@ -359,7 +363,7 @@ export default function App({ profile }: Props) {
           )}
         </main>
         <ScrollBar
-          box={box}
+          box={siteLook ? siteBox : box}
           metrics={viewer.metrics}
           position={viewer.position}
           ratio={viewer.scroll}

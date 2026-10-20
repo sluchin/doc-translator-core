@@ -5,9 +5,10 @@
  */
 
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { isDocUrl, withoutHash } from "../lib/docUrl";
 import { log } from "../lib/log";
+import type { Metrics } from "../lib/progress";
 import type { SiteProfile } from "../lib/profile";
 import {
   type FrameNode,
@@ -73,6 +74,10 @@ interface Props {
   anchor: string;
   /** ドキュメントのリンクを開く. */
   onOpen: (url: string) => void;
+  /** 枠の中をスクロールした (スクロールバーと, 読んだ位置のため). */
+  onScroll: (metrics: Metrics) => void;
+  /** 枠の中でスクロールする要素 (スクロールバーで動かすため). */
+  scrollerRef: RefObject<HTMLElement | null>;
 }
 
 /**
@@ -85,8 +90,22 @@ interface Props {
  * @param props 引数
  * @returns 本文
  */
-export function SiteDoc({ site, url, frame, styles, html, anchor, onOpen }: Props) {
+export function SiteDoc({
+  site,
+  url,
+  frame,
+  styles,
+  html,
+  anchor,
+  onOpen,
+  onScroll,
+  scrollerRef,
+}: Props) {
   const ref = useRef<HTMLIFrameElement>(null);
+  const unwatch = useRef<() => void>(undefined);
+
+  // 枠を外すときは, スクロールを見るのをやめる
+  useEffect(() => () => unwatch.current?.(), []);
   const [css, setCss] = useState<{ url: string; text: string }>();
 
   useEffect(() => {
@@ -130,6 +149,7 @@ export function SiteDoc({ site, url, frame, styles, html, anchor, onOpen }: Prop
     if (!doc) {
       return;
     }
+    watchScroll(doc);
     const jump = (id: string) => doc.querySelector(`[id="${CSS.escape(id)}"]`)?.scrollIntoView();
     if (anchor) {
       jump(anchor);
@@ -151,6 +171,31 @@ export function SiteDoc({ site, url, frame, styles, html, anchor, onOpen }: Prop
         void openUrl(href);
       }
     });
+  };
+
+  // 枠の中のスクロールを, 枠の外 (右のスクロールバー) に知らせる. 枠の中の標準のスクロールバーは隠す
+  const watchScroll = (doc: Document) => {
+    unwatch.current?.();
+    const box = (doc.scrollingElement ?? doc.documentElement) as HTMLElement;
+    doc.documentElement.style.scrollbarWidth = "none";
+    scrollerRef.current = box;
+    const scrolled = () =>
+      onScroll({ top: box.scrollTop, height: box.scrollHeight, view: box.clientHeight });
+    scrolled();
+    doc.addEventListener("scroll", scrolled, { passive: true });
+    // 画像で本文の長さが変わったときや, 画面の大きさが変わったときも, 数え直す
+    const observer = new ResizeObserver(scrolled);
+    observer.observe(doc.documentElement);
+    if (doc.body) {
+      observer.observe(doc.body);
+    }
+    unwatch.current = () => {
+      doc.removeEventListener("scroll", scrolled);
+      observer.disconnect();
+      if (scrollerRef.current === box) {
+        scrollerRef.current = null;
+      }
+    };
   };
 
   return ready ? (
