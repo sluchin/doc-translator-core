@@ -5,12 +5,21 @@ updates:
   - package-ecosystem: "npm"
     directories:
       - "/"
+    ignore:
+      # TypeScript 7 は, typescript-eslint が対応するまで上げない.
+      - dependency-name: "typescript"
+        versions: [">= 7.0.0"]
     schedule:
       interval: "weekly"
     commit-message:
       prefix: "build"
       include: "scope"
     groups:
+      # 一緒に上げないと, 版がずれて動かない組 (メジャー版も含めて, 1 つの PR にする).
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
+      vite:
+        patterns: ["vite", "@vitejs/*"]
       minor-and-patch:
         update-types: ["minor", "patch"]
   - package-ecosystem: "cargo"
