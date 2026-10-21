@@ -38,7 +38,7 @@ jobs:
           env UID="$(id -u)" GID="$(id -g)" docker compose run --rm ${{ matrix.service }} 2>&1 | tee "$RUNNER_TEMP/${{ matrix.service }}.log"
 
       - name: Upload the log
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: ${{ matrix.service }}_log
