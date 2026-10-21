@@ -5,7 +5,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { formatLog, isLogEnabled, log, setupLog } from "./log";
+import { captureErrors, formatLog, isLogEnabled, log, setupLog } from "./log";
 
 describe("log", () => {
   afterEach(() => {
@@ -68,5 +68,25 @@ describe("log", () => {
     expect(formatLog([withStack])).toBe(withStack.stack);
     expect(formatLog([withoutStack])).toBe("plain");
     expect(formatLog(["a", { b: 1 }])).toBe('a {"b":1}');
+  });
+
+  it("画面の予期しないエラーを, エラーのログに出す", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const sink = vi.fn().mockResolvedValue(undefined);
+    setupLog(false, sink);
+    const target = new EventTarget() as unknown as Window;
+    captureErrors(target);
+
+    const error = new Error("boom");
+    target.dispatchEvent(Object.assign(new Event("error"), { error, message: "boom" }));
+    target.dispatchEvent(Object.assign(new Event("error"), { error: null, message: "script" }));
+    const rejection = Object.assign(new Event("unhandledrejection"), { reason: "nope" });
+    target.dispatchEvent(rejection);
+
+    expect(sink.mock.calls.map((call) => call[1])).toEqual([
+      `Uncaught error: ${String(error.stack)}`,
+      "Uncaught error: script",
+      "Unhandled rejection: nope",
+    ]);
   });
 });

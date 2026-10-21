@@ -102,3 +102,19 @@ export const log = {
    */
   error: (...args: unknown[]) => write("error", args),
 };
+
+/**
+ * 画面の予期しないエラー (捕まえていない例外と, 拒否された Promise) を, エラーのログに出す.
+ *
+ * ログはバックエンドのログファイルにも残るので, あとからアプリのログの画面で見られる. アプリの起動のときに 1 度だけ呼ぶ.
+ *
+ * @param target エラーを受けるウィンドウ
+ */
+export function captureErrors(target: Window): void {
+  target.addEventListener("error", (event) => {
+    log.error("Uncaught error:", event.error ?? event.message);
+  });
+  target.addEventListener("unhandledrejection", (event) => {
+    log.error("Unhandled rejection:", event.reason);
+  });
+}

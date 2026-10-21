@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react";
 import * as api from "./api";
+import { LogDialog } from "./LogDialog";
 
 /** 無料の Google 翻訳に、同時に送る依頼の数の選択肢 (Rust の `free::MAX_PARALLEL` までの数). */
 const PARALLEL_CHOICES = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -35,6 +36,7 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
   const [notice, setNotice] = useState<string>();
   const [checking, setChecking] = useState(false);
   const [checkResult, setCheckResult] = useState<string>();
+  const [showLog, setShowLog] = useState(false);
 
   useEffect(() => {
     void api.getSettings().then((loaded) => {
@@ -112,6 +114,9 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
 
   if (!view) {
     return null;
+  }
+  if (showLog) {
+    return <LogDialog onClose={() => setShowLog(false)} />;
   }
   const status = (has: boolean) => (has ? "(設定済み)" : "(未設定)");
 
@@ -240,6 +245,15 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
               {cacheMessage}
             </p>
           )}
+        </fieldset>
+        <fieldset>
+          <legend>ログ</legend>
+          <p className="hint">
+            アプリの動き（エラーなど）の記録です。うまく動かないときに見たり、書き出したりできます。
+          </p>
+          <div className="actions">
+            <button onClick={() => setShowLog(true)}>ログを見る</button>
+          </div>
         </fieldset>
         {message && <p className="error">{message}</p>}
         {notice && (

@@ -13,7 +13,7 @@ import { ScrollBar } from "./ScrollBar";
 import { SettingsDialog } from "./SettingsDialog";
 import { SiteDoc } from "./SiteDoc";
 import { isDocUrl, switchedUrl } from "../lib/docUrl";
-import { log, setupLog } from "../lib/log";
+import { captureErrors, log, setupLog } from "../lib/log";
 import { logToBackend } from "./api";
 import type { SiteProfile } from "../lib/profile";
 import { type Block, syncedTop } from "../lib/syncScroll";
@@ -24,6 +24,8 @@ import { PULL_THRESHOLD } from "../lib/pull";
 
 // ログを設定する (開発版はデバッグ以上, リリース版は情報以上. Rust 側のログファイルにも残す)
 setupLog(import.meta.env.DEV, logToBackend);
+// 予期しないエラーも, ログファイルに残す (あとから, 設定の「ログを見る」で見る)
+captureErrors(window);
 
 /**
  * 今のページを, 端末のブラウザ (Chrome など, 既定のブラウザ) で開く (サイトの元の見た目で見るため).

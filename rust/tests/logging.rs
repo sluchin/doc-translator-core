@@ -7,7 +7,8 @@ use std::path::Path;
 use tempfile::tempdir;
 
 use doc_translator_core::logging::{
-    LogLevel, RotatingFile, Tee, backup_path, default_level, log_frontend_message, log_path,
+    LogLevel, RotatingFile, Tee, backup_path, clear_logs, default_level, log_frontend_message,
+    log_path, panic_text, read_tail,
 };
 
 #[test]
@@ -147,4 +148,93 @@ fn test_log_level_into_success() {
 #[test]
 fn test_log_frontend_message_does_not_panic() {
     log_frontend_message(LogLevel::Info, "test".to_string());
+}
+
+#[test]
+fn test_panic_text_formats_the_message_and_the_location() {
+    let text: Box<dyn std::any::Any + Send> = Box::new("boom");
+    assert_eq!(
+        panic_text(text.as_ref(), Some("src/a.rs:1:2")),
+        "Panicked at src/a.rs:1:2: boom"
+    );
+    let owned: Box<dyn std::any::Any + Send> = Box::new(String::from("owned"));
+    assert_eq!(
+        panic_text(owned.as_ref(), None),
+        "Panicked at unknown: owned"
+    );
+    let other: Box<dyn std::any::Any + Send> = Box::new(1);
+    assert_eq!(
+        panic_text(other.as_ref(), None),
+        "Panicked at unknown: (not a string)"
+    );
+}
+
+#[test]
+fn test_read_tail_joins_the_backups_from_the_oldest() {
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("app.log");
+    fs::write(backup_path(&path, 2), "a1\na2\n").unwrap();
+    fs::write(backup_path(&path, 1), "b1\n").unwrap();
+    fs::write(&path, "c1\n").unwrap();
+
+    assert_eq!(read_tail(&path, 3, 1024).unwrap(), "a1\na2\nb1\nc1\n");
+}
+
+#[test]
+fn test_read_tail_drops_the_cut_line_over_the_limit() {
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("app.log");
+    fs::write(backup_path(&path, 1), "old line\nb1\n").unwrap();
+    fs::write(&path, "c1\n").unwrap();
+
+    // 末尾の 7 バイト ("\nb1\nc1\n" の一部) で, 切れた行を捨てる
+    assert_eq!(read_tail(&path, 3, 7).unwrap(), "b1\nc1\n");
+    // ちょうど今のファイルで上限になれば, 古いファイルは読まない
+    assert_eq!(read_tail(&path, 3, 3).unwrap(), "c1\n");
+    // 改行のない, 切れた行だけなら, 空にする
+    fs::write(&path, "abcdef").unwrap();
+    assert_eq!(read_tail(&path, 0, 3).unwrap(), "");
+}
+
+#[test]
+fn test_read_tail_without_files_is_empty() {
+    let dir = tempdir().unwrap();
+    assert_eq!(read_tail(&dir.path().join("app.log"), 3, 1024).unwrap(), "");
+}
+
+#[test]
+fn test_read_tail_fails_on_a_directory() {
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("app.log");
+    fs::create_dir(&path).unwrap();
+    assert!(read_tail(&path, 0, 1024).is_err());
+}
+
+#[test]
+fn test_clear_logs_removes_the_backups_and_empties_the_log() {
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("app.log");
+    fs::write(backup_path(&path, 1), "old").unwrap();
+    fs::write(&path, "now").unwrap();
+
+    clear_logs(&path, 3).unwrap();
+
+    assert!(!backup_path(&path, 1).exists());
+    assert_eq!(fs::read_to_string(&path).unwrap(), "");
+    // ファイルがなくても, 失敗しない
+    clear_logs(&dir.path().join("none.log"), 3).unwrap();
+}
+
+#[test]
+fn test_clear_logs_fails_when_it_cannot_remove() {
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("app.log");
+    // 世代のパスがディレクトリなら, 消せない
+    fs::create_dir(backup_path(&path, 1)).unwrap();
+    fs::write(backup_path(&path, 1).join("x"), "x").unwrap();
+    assert!(clear_logs(&path, 1).is_err());
+    // 今のログのパスがディレクトリなら, 空にできない
+    let other = dir.path().join("dir.log");
+    fs::create_dir(&other).unwrap();
+    assert!(clear_logs(&other, 0).is_err());
 }

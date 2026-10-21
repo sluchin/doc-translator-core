@@ -4,8 +4,9 @@
 //! レベルは, デバッグ版はデバッグ以上, リリース版は情報 (最低限), 警告, エラー ([`default_level`]).
 //! 環境変数 `RUST_LOG` で上書きできます.
 
+use std::any::Any;
 use std::fs::{self, File, OpenOptions};
-use std::io::{self, Stderr, Write};
+use std::io::{self, Read, Seek, SeekFrom, Stderr, Write};
 use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
@@ -14,6 +15,8 @@ use serde::Deserialize;
 pub const MAX_LOG_BYTES: u64 = 5 * 1024 * 1024;
 /// 保持する, ローテート済みログファイルの世代数 (`app.log.1` 〜 `.<この数>`).
 pub const MAX_BACKUPS: u32 = 3;
+/// 画面に返す, ログの末尾の最大サイズ (バイト). 画面で読める量にする.
+pub const MAX_READ_BYTES: u64 = 512 * 1024;
 
 /// ローテート済みファイルの世代を表す, パスの末尾 (`<path>.<generation>`) を返します.
 ///
@@ -198,6 +201,8 @@ pub fn default_level(debug: bool) -> log::LevelFilter {
 pub fn init_logging(path: &Path) {
     let mut builder = env_logger::Builder::new();
     builder.filter_level(default_level(cfg!(debug_assertions)));
+    // ログの画面で, 同じ秒のログの順が分かるように, ミリ秒まで書く
+    builder.format_timestamp_millis();
     // RUST_LOG があれば, 既定のレベルを上書きする
     builder.parse_env(env_logger::Env::default());
     if let Ok(file) = RotatingFile::open(path, MAX_LOG_BYTES, MAX_BACKUPS) {
@@ -208,6 +213,121 @@ pub fn init_logging(path: &Path) {
     }
     // 2 回目の初期化は, 失敗するだけで, ログは前のまま出る
     let _ = builder.try_init();
+    install_panic_hook();
+}
+
+/// panic を, ログ (ログファイル) に残すようにします. 元の処理 (標準エラー出力への表示) も, そのあとで呼びます.
+///
+/// 落ちた原因を, あとからアプリのログの画面で見られるようにするためです.
+// グローバルな panic の処理を差し替えるもので, cargo test では検証できない
+// (文字列にするのは panic_text で検証する).
+#[cfg(not(tarpaulin_include))]
+fn install_panic_hook() {
+    let previous = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let location = info.location().map(|l| l.to_string());
+        log::error!(
+            "{}\n{}",
+            panic_text(info.payload(), location.as_deref()),
+            std::backtrace::Backtrace::force_capture()
+        );
+        previous(info);
+    }));
+}
+
+/// panic の内容と場所を, 1 行の文字列にします.
+///
+/// # Arguments
+///
+/// * `payload` - panic の値 (`panic!` のメッセージ. 文字列でなければ, 内容は分からない).
+/// * `location` - panic した場所 (`ファイル:行:列`).
+///
+/// # Returns
+///
+/// 文字列 (例: `Panicked at src/lib.rs:1:2: boom`).
+pub fn panic_text(payload: &(dyn Any + Send), location: Option<&str>) -> String {
+    let message = payload
+        .downcast_ref::<&str>()
+        .map(|s| (*s).to_string())
+        .or_else(|| payload.downcast_ref::<String>().cloned())
+        .unwrap_or_else(|| "(not a string)".to_string());
+    format!("Panicked at {}: {}", location.unwrap_or("unknown"), message)
+}
+
+/// ログファイルの末尾を返します. ローテート済みのファイルも, 古いものから順に, つなげて読みます.
+///
+/// 上限を超える分は, 古い方から捨てます. 途中で切った最初の行は, 行の途中からになるので, 捨てます.
+/// UTF-8 でないバイトは, 置き換え文字にします.
+///
+/// # Arguments
+///
+/// * `path` - ログファイルのパス ([`log_path`]).
+/// * `max_backups` - ローテート済みファイルの世代数.
+/// * `max_bytes` - 返す最大のバイト数.
+///
+/// # Returns
+///
+/// 成功した場合は, ログの文字列 (ファイルがなければ空). 読めない場合は [`Err`].
+pub fn read_tail(path: &Path, max_backups: u32, max_bytes: u64) -> io::Result<String> {
+    // 新しいファイルから読み, 上限に達したら止める
+    let mut files = vec![path.to_path_buf()];
+    files.extend((1..=max_backups).map(|generation| backup_path(path, generation)));
+    let mut chunks: Vec<Vec<u8>> = Vec::new();
+    let mut remaining = max_bytes;
+    let mut truncated = false;
+    for file in files {
+        if remaining == 0 {
+            break;
+        }
+        let mut handle = match File::open(&file) {
+            Ok(handle) => handle,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
+            Err(e) => return Err(e),
+        };
+        let size = handle.metadata()?.len();
+        let start = size.saturating_sub(remaining);
+        // 途中から読むのは, 上限に達した, 最後に読むファイルだけ
+        truncated = start > 0;
+        handle.seek(SeekFrom::Start(start))?;
+        let mut chunk = Vec::new();
+        handle.read_to_end(&mut chunk)?;
+        remaining -= chunk.len() as u64;
+        chunks.push(chunk);
+    }
+    let mut bytes: Vec<u8> = chunks.into_iter().rev().flatten().collect();
+    if truncated {
+        let cut = bytes
+            .iter()
+            .position(|&b| b == b'\n')
+            .map_or(bytes.len(), |i| i + 1);
+        bytes.drain(..cut);
+    }
+    Ok(String::from_utf8_lossy(&bytes).into_owned())
+}
+
+/// ログを消します. ローテート済みのファイルを消し, 今のログファイルを空にします.
+///
+/// 今のログファイルは, ロガーが開いたままなので, 消さないで, 空にします (追記で開いているので, 続きは先頭から書かれます).
+///
+/// # Arguments
+///
+/// * `path` - ログファイルのパス ([`log_path`]).
+/// * `max_backups` - ローテート済みファイルの世代数.
+///
+/// # Returns
+///
+/// 成功した場合は [`Ok`]. 消せない場合は [`Err`].
+pub fn clear_logs(path: &Path, max_backups: u32) -> io::Result<()> {
+    for generation in 1..=max_backups {
+        match fs::remove_file(backup_path(path, generation)) {
+            Err(e) if e.kind() != io::ErrorKind::NotFound => return Err(e),
+            _ => {}
+        }
+    }
+    match OpenOptions::new().write(true).truncate(true).open(path) {
+        Err(e) if e.kind() != io::ErrorKind::NotFound => Err(e),
+        _ => Ok(()),
+    }
 }
 
 /// フロントエンドから送られる, ログの重大度.

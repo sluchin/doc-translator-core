@@ -156,3 +156,30 @@ export function importCache(): Promise<number | null> {
 export function logToBackend(level: LogLevel, message: string): Promise<void> {
   return invoke<void>("log_frontend_message", { level, message });
 }
+
+/**
+ * アプリのログの末尾を返す (古いログファイルも含めて, 新しい方から約 512 KB).
+ *
+ * @returns ログファイルの文字列
+ */
+export function readLog(): Promise<string> {
+  return invoke<string>("read_log");
+}
+
+/**
+ * アプリのログを消す.
+ *
+ * @returns 消し終えたとき
+ */
+export function clearLog(): Promise<void> {
+  return invoke<void>("clear_log");
+}
+
+/**
+ * アプリのログを書き出す (書き出し方は, 翻訳のキャッシュと同じ).
+ *
+ * @returns 書き出しの結果
+ */
+export function exportLog(): Promise<Exported> {
+  return invoke<Exported>("export_log", { stamp: exportStamp(new Date()) });
+}

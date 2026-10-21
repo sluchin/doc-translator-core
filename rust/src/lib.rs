@@ -237,11 +237,21 @@ fn schedule_save(app: &tauri::AppHandle) {
 
 /// 書き出すファイルの名前 (サイトのホストと, 日時). 日時が数字とハイフンでなければ, 日時を付けない.
 pub fn export_name(host: &str, stamp: &str) -> String {
-    let base = format!("{}-cache", host.replace('.', "-"));
+    stamped_name(host, "cache", stamp, "json")
+}
+
+/// ログを書き出すファイルの名前 (サイトのホストと, 日時). 日時の扱いは [`export_name`] と同じ.
+pub fn log_export_name(host: &str, stamp: &str) -> String {
+    stamped_name(host, "log", stamp, "txt")
+}
+
+/// `<ホスト>-<種類>-<日時>.<拡張子>` の名前を作る (日時が数字とハイフンでなければ, 日時を付けない).
+fn stamped_name(host: &str, kind: &str, stamp: &str, extension: &str) -> String {
+    let base = format!("{}-{kind}", host.replace('.', "-"));
     if !stamp.is_empty() && stamp.chars().all(|c| c.is_ascii_digit() || c == '-') {
-        format!("{base}-{stamp}.json")
+        format!("{base}-{stamp}.{extension}")
     } else {
-        format!("{base}.json")
+        format!("{base}.{extension}")
     }
 }
 
@@ -274,6 +284,18 @@ async fn export_cache(
     let snapshot = state.cache.lock().map_err(|e| e.to_string())?.snapshot();
     // ファイルの名前は, アプリ (サイト) ごとに分ける (別のアプリのキャッシュと, 取り違えない)
     let name = export_name(state.site.host, &stamp);
+
+    export_text(&app, name, move || translate::entries_to_json(&snapshot)).await
+}
+
+/// 文章をファイルに書き出す (Android は Google Drive のアプリに渡す. PC は保存の画面を開く).
+///
+/// `content` は, 書き出す文章を作る関数 (大きいので, 別のスレッドで作る).
+async fn export_text(
+    app: &tauri::AppHandle,
+    name: String,
+    content: impl FnOnce() -> String + Send + 'static,
+) -> Result<Exported, String> {
     if MLKIT_AVAILABLE {
         // Android: キャッシュのディレクトリに書いて, Drive に渡す (`FileProvider` が渡せるのは, そこだけ)
         use tauri_plugin_mlkit::MlkitExt;
@@ -283,7 +305,7 @@ async fn export_cache(
         let file = path.clone();
         tokio::task::spawn_blocking(move || -> std::io::Result<()> {
             std::fs::create_dir_all(&dir)?;
-            std::fs::write(file, translate::entries_to_json(&snapshot))
+            std::fs::write(file, content())
         })
         .await
         .map_err(|e| e.to_string())?
@@ -306,13 +328,57 @@ async fn export_cache(
         let mut options = OpenOptions::new();
         options.write(true).create(true).truncate(true);
         let mut file = fs_app.fs().open(path, options).map_err(|e| e.to_string())?;
-        file.write_all(translate::entries_to_json(&snapshot).as_bytes())
+        file.write_all(content().as_bytes())
             .map_err(|e| e.to_string())
     })
     .await
     .map_err(|e| e.to_string())??;
 
     Ok(Exported::Saved)
+}
+
+/// アプリのログの末尾を返す (ローテート済みのファイルも含めて, [`logging::MAX_READ_BYTES`] まで).
+///
+/// 設定の画面の「ログを見る」から呼ぶ.
+#[tauri::command]
+async fn read_log(state: State<'_, AppState>) -> Result<String, String> {
+    let path = logging::log_path(&state.dir);
+    tokio::task::spawn_blocking(move || {
+        logging::read_tail(&path, logging::MAX_BACKUPS, logging::MAX_READ_BYTES)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())
+}
+
+/// アプリのログを消す.
+#[tauri::command]
+fn clear_log(state: State<'_, AppState>) -> Result<(), String> {
+    logging::clear_logs(&logging::log_path(&state.dir), logging::MAX_BACKUPS)
+        .map_err(|e| e.to_string())?;
+    log::info!("Cleared the log");
+
+    Ok(())
+}
+
+/// アプリのログを書き出す (書き出し方は, 翻訳のキャッシュと同じ. `stamp` は書き出した日時).
+///
+/// 問題が起きたときに, ログをほかの端末で見たり, 送ったりするために使う.
+#[tauri::command]
+async fn export_log(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    stamp: String,
+) -> Result<Exported, String> {
+    let path = logging::log_path(&state.dir);
+    let name = log_export_name(state.site.host, &stamp);
+    // ログ全体 (最大で約 20 MB) を書き出す
+    let max = logging::MAX_LOG_BYTES * u64::from(logging::MAX_BACKUPS + 1);
+
+    export_text(&app, name, move || {
+        logging::read_tail(&path, logging::MAX_BACKUPS, max).unwrap_or_else(|e| e.to_string())
+    })
+    .await
 }
 
 /// 書き出したキャッシュを読み込んで, 端末のキャッシュに足し合わせる (選択の画面を開く).
@@ -439,6 +505,9 @@ pub fn builder(site: Site) -> tauri::Builder<tauri::Wry> {
             lookup_cache,
             export_cache,
             import_cache,
+            read_log,
+            clear_log,
+            export_log,
             check_mlkit,
             get_settings,
             set_settings

@@ -10,6 +10,7 @@
   --note-bg: #eaf2ff;
   --ok-bg: #dcf0df;
   --warn-bg: #fff4e0;
+  --warn: #9a5b00;
   --error: #b3261e;
   color-scheme: light dark;
 }
@@ -26,6 +27,7 @@
     --note-bg: #17283f;
     --ok-bg: #1a3322;
     --warn-bg: #3a2d14;
+    --warn: #ffb74d;
     --error: #ff8a80;
   }
 }
@@ -467,6 +469,48 @@ input {
 .dialog .hint {
   color: var(--muted);
   font-size: 0.85rem;
+}
+
+/* ログの画面 (設定の画面より広く使う) */
+.dialog.log-dialog {
+  width: min(900px, 100%);
+}
+
+.log-tools {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.8rem;
+}
+
+.log-list li {
+  border-bottom: 1px solid var(--border);
+  padding: 4px 0;
+}
+
+.log-list .log-head {
+  color: var(--muted);
+}
+
+.log-list pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, monospace;
+}
+
+.log-list .log-warn .log-head {
+  color: var(--warn);
+}
+
+.log-list .log-error .log-head {
+  color: var(--error);
 }
 
 /* ナビゲーションドロワー (メニュー) */

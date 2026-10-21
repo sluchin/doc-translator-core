@@ -4,7 +4,7 @@
 
 //! キャッシュの書き出しのファイルの名前 (`lib.rs` の `export_name`) の単体テスト.
 
-use doc_translator_core::export_name;
+use doc_translator_core::{export_name, log_export_name};
 
 #[test]
 fn names_the_export_file_by_the_site_and_the_date() {
@@ -24,5 +24,17 @@ fn names_the_export_file_by_the_site_and_the_date() {
     assert_eq!(
         export_name("kotlinlang.org", "2026 10"),
         "kotlinlang-org-cache.json"
+    );
+}
+
+#[test]
+fn names_the_log_file_by_the_site_and_the_date() {
+    assert_eq!(
+        log_export_name("docs.zephyrproject.org", "20261017-1530"),
+        "docs-zephyrproject-org-log-20261017-1530.txt"
+    );
+    assert_eq!(
+        log_export_name("kotlinlang.org", "../x"),
+        "kotlinlang-org-log.txt"
     );
 }

@@ -128,7 +128,8 @@ class MlKitPlugin(
                     FileProvider.getUriForFile(activity, "${activity.packageName}.fileprovider", File(args.path))
                 val send =
                     Intent(Intent.ACTION_SEND).apply {
-                        type = "application/json"
+                        // 翻訳のキャッシュは JSON, ログは文章
+                        type = if (args.path.endsWith(".json")) "application/json" else "text/plain"
                         putExtra(Intent.EXTRA_STREAM, uri)
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
