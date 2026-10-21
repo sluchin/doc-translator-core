@@ -29,7 +29,7 @@ kotlin {
 
 dependencies {
 
-    implementation("androidx.core:core-ktx:1.9.0")
+    implementation("androidx.core:core-ktx:1.19.1")
     // オンデバイス翻訳 (ML Kit)
     implementation("com.google.mlkit:translate:17.0.3")
     implementation(project(":tauri-android"))
