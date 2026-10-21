@@ -48,6 +48,7 @@ jobs:
 
   cleanup:
     name: Delete the old runs
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       actions: write
