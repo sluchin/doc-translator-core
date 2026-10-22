@@ -71,6 +71,20 @@ export interface SectionSource {
   readonly menuLevels: readonly string[];
 }
 
+/** 翻訳しない言葉の設定. */
+export interface KeepTerms {
+  /** 言葉を探す要素の CSS セレクタ (見出しなど). */
+  readonly selector: string;
+  /** 翻訳しない言葉に合わせる正規表現 (`g` は付けなくてよい). */
+  readonly pattern: RegExp;
+  /**
+   * 翻訳しない言葉で始まる要素を翻訳に渡すときに, 前に付ける言葉 (`The` など. 表示はしない).
+   * 翻訳サービスは, 先頭の「翻訳しない」印のあとの言葉を落とすことがある (「If expression」が「If」だけになる)
+   * ので, 文の中の言葉にする. なければ, 付けない.
+   */
+  readonly lead?: string;
+}
+
 /** 翻訳するドキュメントのサイトごとの設定 (アプリごとに 1 つ). */
 export interface SiteProfile {
   /** アプリの名前 (タイトルの表示に使う). */
@@ -89,6 +103,16 @@ export interface SiteProfile {
   readonly removeSelectors: readonly string[];
   /** 本文の中で, 表示するが, 翻訳しない要素の CSS セレクタ (関数の宣言など. なければ, 共通の決まりだけ). */
   readonly noTranslateSelectors?: readonly string[];
+  /**
+   * 見出しなどの中で, 翻訳しない言葉 (プログラムの予約語など. 「If」や「For loops」の `If` `For` を,
+   * 英語の言葉として訳さないように). なければ, 印を付けない.
+   */
+  readonly keepTerms?: KeepTerms;
+  /**
+   * 本文を組み直す (要素を書き換える. 表示の形によらず, 取り出すときに行う. 畳める項目を `details` にするなど).
+   * 組み直した本文も, `sanitize()` を通す. なければ, 組み直さない.
+   */
+  readonly rewrite?: (content: Element) => void;
   /** コードの中で、取り除く行 (サイトの JavaScript が隠す印など. 行全体に合わせる. なければ、取り除かない). */
   readonly dropCodeLines?: RegExp;
   /** タイトルの末尾の, サイト名 (取り除く). */

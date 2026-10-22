@@ -295,6 +295,57 @@ describe("extractPage redirect and no-translate", () => {
       "notranslate",
     );
   });
+
+  it("marks the kept terms in the headings outside the code", () => {
+    const html = `<main><h2>Go run</h2><h3>Run <em>run</em> and <code>run</code> walks</h3><p>Run</p></main>`;
+    const site = {
+      ...PROFILE,
+      contentSelectors: ["main"],
+      keepTerms: { selector: "h2, h3", pattern: /\brun\b|x*/i },
+    };
+    expect(extractPage(html, HOME_URL, site).html).toBe(
+      '<h2>Go <span class="notranslate">run</span></h2><h3><span class="notranslate">Run</span> ' +
+        '<em><span class="notranslate">run</span></em> and <code>run</code> walks</h3><p>Run</p>',
+    );
+    // g の付いた正規表現も, 同じ
+    const global = { ...site, keepTerms: { selector: "h2", pattern: /run/gi } };
+    expect(extractPage(html, HOME_URL, global).html).toContain(
+      '<h2>Go <span class="notranslate">run</span></h2>',
+    );
+  });
+
+  it("leads the elements that start with a kept term, only for the translation", () => {
+    const html = `<main><h2> <b>Run</b> fast</h2><h2>Go run</h2><h2> </h2><p>Run</p></main>`;
+    const site = {
+      ...PROFILE,
+      contentSelectors: ["main"],
+      keepTerms: { selector: "h2", pattern: /run/i, lead: "The" },
+    };
+    const root = document.createElement("div");
+    root.innerHTML = extractPage(html, HOME_URL, site).html;
+    const [first, second, third] = Array.from(root.querySelectorAll("h2"));
+    expect(first.textContent).toBe(" Run fast");
+    expect(markAtomic(first)).toBe(
+      'The  <b><span class="notranslate" translate="no">Run</span></b> fast',
+    );
+    expect(markAtomic(second)).toBe('Go <span class="notranslate" translate="no">run</span>');
+    expect(third.hasAttribute("data-zd-lead")).toBe(false);
+  });
+
+  it("rewrites the content before the sanitizing", () => {
+    const html = `<main><dl><dt>Task</dt><dd>Body</dd></dl></main>`;
+    const site = {
+      ...PROFILE,
+      contentSelectors: ["main"],
+      rewrite: (content: Element) => {
+        content.innerHTML =
+          '<details open=""><summary>Task</summary>Body<script>x</script></details>';
+      },
+    };
+    expect(extractPage(html, HOME_URL, site).html).toBe(
+      '<details open=""><summary>Task</summary>Body</details>',
+    );
+  });
 });
 
 describe("syncScroll", () => {

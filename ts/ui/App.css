@@ -316,7 +316,7 @@ input {
 
 /*
  * .code-block: Kotlin のドキュメントのコードは、pre ではなく、改行つきの文字を持つ div (サイトの JavaScript が整形する).
- * .code-collapse は、畳めるコード (練習の答えなど. 畳まずに出す)
+ * .code-collapse は、畳めるコード (練習の答えなど. アプリが details で包むときは、畳める)
  */
 .doc pre,
 .doc .code-block,
@@ -383,6 +383,17 @@ input {
 
 .doc dl[data-style="title-top"] > dd {
   margin: 0.4em 0 1em;
+}
+
+/* 畳める項目 (Kotlin (Writerside) の練習の問題、答えのコードなど. 本文を組み直して details にする) */
+.doc details {
+  margin: 0.6em 0;
+}
+
+.doc summary {
+  cursor: pointer;
+  font-weight: 700;
+  margin: 0.4em 0;
 }
 
 .doc .admonition-title {

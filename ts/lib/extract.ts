@@ -8,6 +8,7 @@ import { absoluteUrl } from "./docUrl";
 import { parseHtmlMenu } from "./menu";
 import type { MenuItem, SiteProfile } from "./profile";
 import { sanitize } from "./sanitize";
+import { markTerms } from "./segments";
 import { type FrameNode, type SiteStyles, collectFrame, collectStyles } from "./siteLook";
 import { type VersionChoice, parseVersions } from "./version";
 
@@ -74,6 +75,10 @@ export function extractPage(html: string, url: string, profile: SiteProfile): Do
   content
     .querySelectorAll([...REMOVE, ...profile.removeSelectors].join(", "))
     .forEach((element) => element.remove());
+  profile.rewrite?.(content);
+  if (profile.keepTerms) {
+    markTerms(content, profile.keepTerms);
+  }
   if (profile.noTranslateSelectors && profile.noTranslateSelectors.length > 0) {
     // 関数の宣言などは、表示するが、翻訳しない (「翻訳しない」印の class を付ける)
     content

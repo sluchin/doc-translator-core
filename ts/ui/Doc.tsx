@@ -31,6 +31,21 @@ interface Props {
 }
 
 /**
+ * 要素を囲む, 畳んだ項目 (`details`. 要素そのものも) を開く (リンクの先が, 畳んだ中にあるとき).
+ *
+ * @param target 要素
+ */
+function reveal(target: Element): void {
+  for (
+    let details = target.closest("details");
+    details;
+    details = details.parentElement?.closest("details") ?? null
+  ) {
+    details.open = true;
+  }
+}
+
+/**
  * 本文を表示する. リンクのクリックを受けて、ドキュメントの中はアプリで開き、外はブラウザで開く.
  *
  * @param props 引数
@@ -40,14 +55,26 @@ export function Doc({ site, url, docUrl, restore, onScroll, html, anchor, onOpen
   const ref = useRef<HTMLElement>(null);
   const shown = useRef("");
   const ratio = useRef(0);
+  // 開け閉めした項目 (`details` の id). 翻訳で本文を描き直しても, 同じページの間は, 開け閉めを戻す
+  const toggled = useRef(new Map<string, boolean>());
 
   useLayoutEffect(() => {
     const box = ref.current?.parentElement;
     if (!box) {
       return;
     }
+    if (shown.current !== docUrl) {
+      toggled.current.clear();
+    }
+    toggled.current.forEach((open, id) => {
+      const details = ref.current?.querySelector(`details[id="${CSS.escape(id)}"]`);
+      if (details instanceof HTMLDetailsElement) {
+        details.open = open;
+      }
+    });
     const target = anchor ? ref.current?.querySelector(`[id="${CSS.escape(anchor)}"]`) : undefined;
     if (target) {
+      reveal(target);
       target.scrollIntoView();
     } else {
       // 別のページなら、覚えていた位置へ. 同じページの翻訳や原文への切り替えなら、読んでいた位置のまま
@@ -59,6 +86,21 @@ export function Doc({ site, url, docUrl, restore, onScroll, html, anchor, onOpen
     // restore は、ページを開いたときに決まる値. 変わっても、スクロールし直さない
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docUrl, html, anchor]);
+
+  useEffect(() => {
+    const article = ref.current;
+    if (!article) {
+      return;
+    }
+    // toggle は伝わらない (bubble しない) ので, 捕まえる段階で受ける
+    const toggle = (event: Event) => {
+      if (event.target instanceof HTMLDetailsElement && event.target.id) {
+        toggled.current.set(event.target.id, event.target.open);
+      }
+    };
+    article.addEventListener("toggle", toggle, true);
+    return () => article.removeEventListener("toggle", toggle, true);
+  }, []);
 
   useEffect(() => {
     const box = ref.current?.parentElement;
@@ -93,7 +135,11 @@ export function Doc({ site, url, docUrl, restore, onScroll, html, anchor, onOpen
     if (isDocUrl(href, site)) {
       if (withoutHash(href) === withoutHash(url)) {
         const id = decodeURIComponent(new URL(href).hash.slice(1));
-        ref.current?.querySelector(`[id="${CSS.escape(id)}"]`)?.scrollIntoView();
+        const target = ref.current?.querySelector(`[id="${CSS.escape(id)}"]`);
+        if (target) {
+          reveal(target);
+          target.scrollIntoView();
+        }
       } else {
         onOpen(href);
       }
