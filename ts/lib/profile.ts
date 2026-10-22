@@ -57,6 +57,20 @@ export interface SiteTab {
   readonly menu?: MenuSource;
 }
 
+/**
+ * 1 つの大きなページ (ドキュメントの全体が 1 つの HTML) を, 見出しごとに分けて, 別のページとして開く設定.
+ *
+ * 分けたページの URL は, 元のページの URL に, クエリ `?section=<見出しの id>` を付けたもの. 取得するのは
+ * 元のページだけ (1 回取得して, 覚えておく). ページの中のリンク (`#名前`) は, その名前がある部分のページを開く.
+ * メニュー (目次) は, 見出しから作る.
+ */
+export interface SectionSource {
+  /** 分ける見出しの CSS セレクタ (本文の直下の要素に合わせる. 例: `h1`). */
+  readonly split: string;
+  /** メニューに出す見出しの CSS セレクタ (上の階層から順に. 例: `["h1", "h2", "h3"]`). */
+  readonly menuLevels: readonly string[];
+}
+
 /** 翻訳するドキュメントのサイトごとの設定 (アプリごとに 1 つ). */
 export interface SiteProfile {
   /** アプリの名前 (タイトルの表示に使う). */
@@ -139,6 +153,11 @@ export interface SiteProfile {
   readonly siteLookRewrite?: (content: Element) => void;
   /** メニュー (目次) の取り方 (なければ, メニューを出さない. `tabs` があるときは, タブごとに決めるので, 使わない). */
   readonly menu?: MenuSource;
+  /**
+   * 1 つの大きなページを, 見出しごとに分けて開く (なければ, 分けない). あれば, メニューは見出しから作るので,
+   * `menu` と `tabs` は使わない.
+   */
+  readonly sections?: SectionSource;
   /**
    * 同じホストの, 複数のドキュメントを, タブで切り替えるときの, タブの一覧 (2 つ以上).
    * あれば, アプリの中で開くのは, タブのパスの先頭に合うページだけ (`pathPrefix` は使わない).

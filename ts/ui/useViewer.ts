@@ -24,6 +24,13 @@ import {
 } from "../lib/history";
 import { parseHtmlMenu } from "../lib/menu";
 import {
+  type SectionedPage,
+  baseUrlOf,
+  resolveSectionUrl,
+  sectionPage,
+  splitSections,
+} from "../lib/sections";
+import {
   type VersionChoice,
   versionFromText,
   versionOf,
@@ -215,6 +222,8 @@ export function useViewer(profile: SiteProfile): Viewer {
   // タブごとに、最後に開いたページ
   const tabUrls = useRef<Record<number, string>>({});
   const cache = useRef(new Map<string, Entry>());
+  // 見出しごとに分けて開くサイトの, 分ける前のページ (大きいので, 最後の 1 つだけ覚える)
+  const whole = useRef<{ url: string; sectioned: SectionedPage }>(undefined);
   const loaded = entry !== undefined;
   const docUrl = entry?.page.url ?? withoutHash(initial.start);
 
@@ -273,27 +282,51 @@ export function useViewer(profile: SiteProfile): Viewer {
     useRef<(url: string, language: Lang, hops: number, fresh: boolean) => Promise<void>>(undefined);
 
   const show = useCallback(
-    async (url: string, language: Lang, hops = 0, fresh = false): Promise<void> => {
+    async (requested: string, language: Lang, hops = 0, fresh = false): Promise<void> => {
       job.current.aborted = true;
       const signal = { aborted: false };
       job.current = signal;
-      const key = withoutHash(url);
       flush();
-      persist(withLast(savedRef.current, key));
-      setRestore(hashOf(url) ? undefined : savedRef.current.scroll[key]);
       setError(undefined);
       setNeedsKey(false);
       setProgress(undefined);
-      setAnchor(hashOf(url));
-      if (fresh) {
-        // 取り直す (サイトが更新されているかもしれない)
-        cache.current.delete(key);
-      }
       try {
+        let url = requested;
+        let sectioned: SectionedPage | undefined;
+        if (profile.sections) {
+          // 大きなページは, 1 回だけ取得して分け, 開く URL を, その部分の URL にする
+          const base = baseUrlOf(requested);
+          let held = whole.current;
+          if (!held || fresh || held.url !== base) {
+            setLoading(true);
+            const page = extractPage(await api.fetchPage(base), base, profile);
+            held = { url: base, sectioned: splitSections(page, profile.sections) };
+            whole.current = held;
+            // 分けたページも, 取り直したページから作り直す
+            cache.current.clear();
+          }
+          sectioned = held.sectioned;
+          url = resolveSectionUrl(sectioned, requested);
+          if (url !== requested) {
+            setNav((n) => replace(n, url));
+          }
+        }
+        const key = withoutHash(url);
+        persist(withLast(savedRef.current, key));
+        setRestore(hashOf(url) ? undefined : savedRef.current.scroll[key]);
+        setAnchor(hashOf(url));
+        if (fresh) {
+          // 取り直す (サイトが更新されているかもしれない)
+          cache.current.delete(key);
+        }
         let found = cache.current.get(key);
         if (!found) {
           setLoading(true);
-          found = { page: extractPage(await api.fetchPage(key), key, profile) };
+          found = {
+            page: sectioned
+              ? sectionPage(sectioned, key)
+              : extractPage(await api.fetchPage(key), key, profile),
+          };
           cache.current.set(key, found);
           if (cache.current.size > CACHE_PAGES) {
             cache.current.delete(cache.current.keys().next().value as string);
@@ -379,7 +412,9 @@ export function useViewer(profile: SiteProfile): Viewer {
   );
 
   useEffect(() => {
-    // 起動したときに、前回読んだページ (なければ、トップ) を取得して翻訳する (外部への通信を始める処理)
+    // 起動したときに、前回読んだページ (なければ、トップ) を取得して翻訳する (外部への通信を始める処理).
+    // show は、取得の前に、エラーや読み込み中の表示を、すぐに切り替える (起動のときに 1 回だけ)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void show(initial.start, "ja");
   }, [show, initial.start]);
 
@@ -511,7 +546,7 @@ export function useViewer(profile: SiteProfile): Viewer {
     menu,
     tabs: tabs.map((t) => t.label),
     tab,
-    hasMenu: source !== undefined,
+    hasMenu: source !== undefined || profile.sections !== undefined,
     versions: versionPattern ? withCurrentVersion(versionList, version) : [],
     version,
     selectVersion: (next) => {
