@@ -33,10 +33,11 @@ services:
     <<: *common
     command: sh -c "npm test && cargo test"
 
-  # TypeScript のカバレッジ (ts/lib の行と分岐が 100% でなければ失敗する)
+  # カバレッジ. TypeScript (ts/lib の行と分岐) と Rust (rust/ の行. cargo tarpaulin) の, どちらも 100% でなければ失敗する.
+  # ML Kit のプラグイン (plugins/) は, Tauri への登録と Android の呼び出しだけなので, 測らない
   coverage:
     <<: *common
-    command: npm run coverage
+    command: sh -c "npm run coverage && cargo tarpaulin -p doc-translator-core --engine llvm --exclude-files 'plugins/*' --fail-under 100 --out Html"
 
   # 整形の確認 (Prettier と rustfmt)
   format:

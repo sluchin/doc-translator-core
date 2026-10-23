@@ -50,7 +50,7 @@ fn keeps_the_parallel_requests_in_the_range() {
 
 #[tokio::test]
 async fn returns_a_blank_text_without_a_request() {
-    let result = translate_one(reqwest::Client::new(), " \n".to_string()).await;
+    let result = translate_one(reqwest::Client::new(), FREE_URL, " \n".to_string()).await;
     assert_eq!(result.unwrap(), " \n");
     let none = GoogleFree::new(reqwest::Client::new(), 0)
         .translate_plain(&[])

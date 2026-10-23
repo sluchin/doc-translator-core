@@ -229,3 +229,27 @@ async fn translates_the_chunks_of_a_long_text_in_one_call_and_joins_them() {
     assert_eq!(calls.len(), 1);
     assert_eq!(calls[0].len(), 2);
 }
+
+#[tokio::test]
+async fn keeps_the_text_without_letters_when_the_markers_are_lost() {
+    let fake = Fake::new(|t| {
+        if t.contains("[[") {
+            "markers lost".to_string()
+        } else {
+            format!("JA({t})")
+        }
+    });
+    let backend = PlainBackend::new(fake);
+    // 英字のない文章 (数字と記号) は, 翻訳に送らず, そのまま残す
+    let result = backend
+        .translate(&strings(&[
+            "Call <code translate=\"no\">x</code> 1 &amp; 2",
+        ]))
+        .await
+        .unwrap();
+
+    assert_eq!(
+        result,
+        vec!["JA(Call) <code translate=\"no\">x</code> 1 &amp; 2".to_string()]
+    );
+}

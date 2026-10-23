@@ -18,7 +18,7 @@ use tokio::task::JoinSet;
 pub const TARGET: &str = "ja";
 
 /// Gemini の API のアドレスの前半.
-const GEMINI_URL: &str = "https://generativelanguage.googleapis.com/v1beta/models";
+pub const GEMINI_URL: &str = "https://generativelanguage.googleapis.com/v1beta/models";
 
 /// Gemini に、やり直す回数 (混んでいるとき: 429 と 503).
 const GEMINI_RETRIES: u32 = 2;
@@ -49,7 +49,7 @@ pub const SOURCE: &str = "en";
 const CACHE_CAPACITY: usize = 20_000;
 
 /// Google Cloud Translation (Basic, v2) の URL.
-const GOOGLE_URL: &str = "https://translation.googleapis.com/language/translate/v2";
+pub const GOOGLE_URL: &str = "https://translation.googleapis.com/language/translate/v2";
 
 /// 翻訳サービス. HTML の断片を, 構造を保って翻訳する.
 pub trait Backend {
@@ -258,6 +258,8 @@ pub async fn translate_with_cache<B: Backend>(
 pub struct GoogleBackend {
     client: reqwest::Client,
     api_key: String,
+    /// 依頼を送る先.
+    url: String,
 }
 
 /// Google の依頼の本文.
@@ -291,7 +293,16 @@ struct GoogleTranslation {
 impl GoogleBackend {
     /// クライアントと API キーから作る.
     pub fn new(client: reqwest::Client, api_key: String) -> Self {
-        Self { client, api_key }
+        Self::with_url(client, api_key, GOOGLE_URL)
+    }
+
+    /// [`GoogleBackend::new`] と同じ. 依頼を送る先を指定する (テスト用のサーバー).
+    pub fn with_url(client: reqwest::Client, api_key: String, url: &str) -> Self {
+        Self {
+            client,
+            api_key,
+            url: url.to_string(),
+        }
     }
 }
 
@@ -337,7 +348,7 @@ impl Backend for GoogleBackend {
     ) -> impl Future<Output = Result<Vec<String>, String>> + Send {
         let request = self
             .client
-            .post(GOOGLE_URL)
+            .post(&self.url)
             .header("X-goog-api-key", &self.api_key)
             .header(reqwest::header::CONTENT_TYPE, "application/json")
             .body(google_body(texts));
@@ -359,6 +370,8 @@ pub struct GeminiBackend {
     client: reqwest::Client,
     api_key: String,
     model: String,
+    /// モデルの一覧の URL (この下に, モデルの名前を付けて送る).
+    base: String,
     /// モデルが、考える機能を切る設定 (`thinkingBudget: 0`) を断ったとき true (以後は、設定を付けない).
     thinking_rejected: Arc<AtomicBool>,
 }
@@ -366,17 +379,23 @@ pub struct GeminiBackend {
 impl GeminiBackend {
     /// クライアント, API キー, モデルから作る.
     pub fn new(client: reqwest::Client, api_key: String, model: String) -> Self {
+        Self::with_base(client, api_key, model, GEMINI_URL)
+    }
+
+    /// [`GeminiBackend::new`] と同じ. モデルの一覧の URL を指定する (テスト用のサーバー).
+    pub fn with_base(client: reqwest::Client, api_key: String, model: String, base: &str) -> Self {
         Self {
             client,
             api_key,
             model,
+            base: base.to_string(),
             thinking_rejected: Arc::new(AtomicBool::new(false)),
         }
     }
 
     /// 依頼を送る先.
     pub fn url(&self) -> String {
-        format!("{GEMINI_URL}/{}:generateContent", self.model)
+        format!("{}/{}:generateContent", self.base, self.model)
     }
 }
 

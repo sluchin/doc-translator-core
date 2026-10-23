@@ -87,7 +87,7 @@ GEMINI_API_KEY=... npm run tauri:build
 export UID GID=$(id -g)
 docker compose run --rm install    # npm ci
 docker compose run --rm test       # Vitest と cargo test
-docker compose run --rm coverage   # ts/lib の行と分岐が 100%
+docker compose run --rm coverage   # ts/lib の行と分岐、rust/ の行が 100% (Rust の結果は tarpaulin-report.html)
 docker compose run --rm format     # 整形の確認 (format-fix で整形)
 docker compose run --rm analyze    # tsc、ESLint、Clippy
 ```

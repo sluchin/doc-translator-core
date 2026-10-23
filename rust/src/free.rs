@@ -17,7 +17,7 @@ use crate::plain::PlainTranslator;
 use crate::translate::{SOURCE, TARGET};
 
 /// 無料の Google 翻訳の入口.
-const FREE_URL: &str = "https://translate.googleapis.com/translate_a/single";
+pub const FREE_URL: &str = "https://translate.googleapis.com/translate_a/single";
 
 /// 同時に送る依頼の数の既定 (多すぎると、断られやすい).
 pub const DEFAULT_PARALLEL: usize = 4;
@@ -79,12 +79,18 @@ pub fn free_error(status: u16) -> String {
 }
 
 /// 1 つの文章を翻訳する (空白だけの文章は、そのまま返す).
-pub async fn translate_one(client: reqwest::Client, text: String) -> Result<String, String> {
+///
+/// `url` は, 依頼を送る先 (普通は [`FREE_URL`]. テストでは, テスト用のサーバー).
+pub async fn translate_one(
+    client: reqwest::Client,
+    url: &str,
+    text: String,
+) -> Result<String, String> {
     if text.trim().is_empty() {
         return Ok(text);
     }
     let response = client
-        .post(FREE_URL)
+        .post(url)
         .header(
             reqwest::header::CONTENT_TYPE,
             "application/x-www-form-urlencoded",
@@ -116,6 +122,8 @@ pub async fn translate_one(client: reqwest::Client, text: String) -> Result<Stri
 /// 無料の Google 翻訳.
 pub struct GoogleFree {
     client: reqwest::Client,
+    /// 依頼を送る先.
+    url: String,
     /// 同時に送る依頼の数.
     parallel: usize,
 }
@@ -123,8 +131,14 @@ pub struct GoogleFree {
 impl GoogleFree {
     /// クライアントと、同時に送る依頼の数 (1 から上限までに収める) から作る.
     pub fn new(client: reqwest::Client, parallel: usize) -> Self {
+        Self::with_url(client, parallel, FREE_URL)
+    }
+
+    /// [`GoogleFree::new`] と同じ. 依頼を送る先を指定する (テスト用のサーバー).
+    pub fn with_url(client: reqwest::Client, parallel: usize, url: &str) -> Self {
         Self {
             client,
+            url: url.to_string(),
             parallel: clamp_parallel(parallel),
         }
     }
@@ -136,6 +150,7 @@ impl PlainTranslator for GoogleFree {
         texts: &[String],
     ) -> impl Future<Output = Result<Vec<String>, String>> + Send {
         let client = self.client.clone();
+        let url = self.url.clone();
         let texts = texts.to_vec();
         let parallel = self.parallel;
 
@@ -144,9 +159,12 @@ impl PlainTranslator for GoogleFree {
             for (batch, chunk) in texts.chunks(parallel).enumerate() {
                 let mut tasks = JoinSet::new();
                 for (offset, text) in chunk.iter().enumerate() {
-                    let (client, text) = (client.clone(), text.clone());
+                    let (client, url, text) = (client.clone(), url.clone(), text.clone());
                     tasks.spawn(async move {
-                        (batch * parallel + offset, translate_one(client, text).await)
+                        (
+                            batch * parallel + offset,
+                            translate_one(client, &url, text).await,
+                        )
                     });
                 }
                 while let Some(done) = tasks.join_next().await {

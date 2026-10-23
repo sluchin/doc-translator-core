@@ -7,6 +7,7 @@
 //! ページの取得と翻訳の依頼 (API キーを使う通信) を受け持つ. HTML の解析と表示は, フロントエンド.
 //! アプリ (zephyr-doc, kotlin-doc) は, [`builder`] に, サイトの設定 [`Site`] を渡して使う.
 
+pub mod commands;
 pub mod docs;
 pub mod free;
 pub mod logging;
@@ -14,49 +15,27 @@ pub mod plain;
 pub mod settings;
 pub mod translate;
 
-use std::path::PathBuf;
-use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, Ordering};
-
 use std::io::Write;
+use std::sync::atomic::Ordering;
 
 use tauri::{Manager, State};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_fs::{FsExt, OpenOptions};
 
+use commands::AppState;
 pub use docs::Site;
-use free::GoogleFree;
-use plain::{PlainBackend, PlainTranslator};
-use settings::{Provider, Settings, Update, View};
-use translate::{Backend, Cache, GeminiBackend, GoogleBackend};
-
-/// キャッシュのファイルの名前.
-const CACHE_FILE: &str = "translation-cache.json";
+use plain::PlainTranslator;
+use settings::{Update, View};
 
 /// キャッシュを保存するまで待つ時間 (続けて翻訳したときは, まとめて 1 回だけ書く).
 const SAVE_DELAY: std::time::Duration = std::time::Duration::from_secs(2);
-
-/// アプリの状態.
-struct AppState {
-    /// 設定と翻訳のキャッシュを保存するディレクトリ.
-    dir: PathBuf,
-    /// 取得するサイト.
-    site: Site,
-    settings: Mutex<Settings>,
-    cache: Mutex<Cache>,
-    /// キャッシュの保存を, 待っているか (待っている間は, 新しく予約しない).
-    save_pending: AtomicBool,
-    /// ページの取得に使う HTTP クライアント (リダイレクトは, ドキュメントのホストの中だけ).
-    client: reqwest::Client,
-    /// 翻訳の API に使う HTTP クライアント (リダイレクトは, たどらない).
-    api_client: reqwest::Client,
-}
 
 /// ML Kit (Android のプラグイン) を、プレーンテキストの翻訳として使う.
 struct MlKit {
     app: tauri::AppHandle,
 }
 
+#[cfg(not(tarpaulin_include))]
 impl PlainTranslator for MlKit {
     fn translate_plain(
         &self,
@@ -79,42 +58,41 @@ impl PlainTranslator for MlKit {
 /// ML Kit が使えるか (Android だけ).
 const MLKIT_AVAILABLE: bool = cfg!(target_os = "android");
 
+// 画面から呼ぶコマンド. 中身は `commands` にあり, ここでは, アプリの状態を渡すだけ.
+
 /// ドキュメントのページの HTML を取得する.
+#[cfg(not(tarpaulin_include))]
 #[tauri::command]
 async fn fetch_page(state: State<'_, AppState>, url: String) -> Result<String, String> {
-    log::debug!("Fetching {}", url);
-    docs::fetch_page(&state.client, state.site, &url)
-        .await
-        .inspect_err(|e| log::warn!("Could not fetch {}: {}", url, e))
+    commands::fetch(&state, &url, docs::Kind::Html).await
 }
 
 /// サイトの JSON ファイル (メニューなど) を取得する.
+#[cfg(not(tarpaulin_include))]
 #[tauri::command]
 async fn fetch_json(state: State<'_, AppState>, url: String) -> Result<String, String> {
-    docs::fetch_text(&state.client, state.site, &url, docs::Kind::Json).await
+    commands::fetch(&state, &url, docs::Kind::Json).await
 }
 
 /// サイトの CSS を取得する (サイトの見た目で表示するため. ホストが違えば, 通信しないで失敗する).
+#[cfg(not(tarpaulin_include))]
 #[tauri::command]
 async fn fetch_css(state: State<'_, AppState>, url: String) -> Result<String, String> {
-    docs::fetch_text(&state.client, state.site, &url, docs::Kind::Css).await
+    commands::fetch(&state, &url, docs::Kind::Css).await
 }
 
 /// ML Kit が動くかを確かめる (翻訳のモデルを取得して, 短い文章を翻訳する. 設定の画面から呼ぶ).
+#[cfg(not(tarpaulin_include))]
 #[tauri::command]
 async fn check_mlkit(app: tauri::AppHandle) -> Result<String, String> {
-    if !MLKIT_AVAILABLE {
-        return Err("ML Kit is available only on Android".to_string());
-    }
-    let sample = ["Hello, world".to_string()];
-
-    Ok(MlKit { app }.translate_plain(&sample).await?.join(" "))
+    commands::check_mlkit(&MlKit { app }, MLKIT_AVAILABLE).await
 }
 
 /// 文章 (HTML の断片) を日本語に翻訳する. 同じ文章は, キャッシュから返す.
 ///
 /// `scope` (ドキュメントの版など) があれば, その範囲ごとに, 別のキャッシュにする. `fresh` なら,
 /// キャッシュにある文章も, 翻訳し直す.
+#[cfg(not(tarpaulin_include))]
 #[tauri::command]
 async fn translate(
     app: tauri::AppHandle,
@@ -123,96 +101,27 @@ async fn translate(
     scope: Option<String>,
     fresh: Option<bool>,
 ) -> Result<Vec<String>, String> {
-    let fresh = fresh.unwrap_or(false);
-    let (provider, key, model, parallel) = {
-        let settings = state.settings.lock().map_err(|e| e.to_string())?;
-        let key = settings
-            .key_for_provider()
-            .ok_or_else(|| "NO_API_KEY".to_string())?
-            .to_string();
-        (
-            settings.provider,
-            key,
-            settings.gemini_model.clone(),
-            settings.free_parallel,
-        )
-    };
-    let client = state.api_client.clone();
-    // キャッシュを分ける名前 (サービスと, Gemini のモデルと, ドキュメントの版)
-    let namespace = translate::scoped_namespace(&provider.namespace(&model), scope.as_deref());
-    // 無料の Google 翻訳は, 同時に送る数ずつキャッシュに入れる (断られても, 翻訳できた分を捨てない)
-    let batch = if provider == Provider::Googlefree {
-        free::clamp_parallel(parallel)
-    } else {
-        usize::MAX
-    };
-    let result = match provider {
-        Provider::Google => {
-            translate_with(
-                &state,
-                &namespace,
-                &GoogleBackend::new(client, key),
-                &texts,
-                batch,
-                fresh,
-            )
-            .await
-        }
-        Provider::Gemini => {
-            translate_with(
-                &state,
-                &namespace,
-                &GeminiBackend::new(client, key, model),
-                &texts,
-                batch,
-                fresh,
-            )
-            .await
-        }
-        Provider::Googlefree => {
-            translate_with(
-                &state,
-                &namespace,
-                &PlainBackend::new(GoogleFree::new(client, parallel)),
-                &texts,
-                batch,
-                fresh,
-            )
-            .await
-        }
-        Provider::Mlkit => {
-            if !MLKIT_AVAILABLE {
-                return Err("ML Kit is available only on Android".to_string());
-            }
-            translate_with(
-                &state,
-                &namespace,
-                &PlainBackend::new(MlKit { app: app.clone() }),
-                &texts,
-                batch,
-                fresh,
-            )
-            .await
-        }
-    };
-    // 失敗しても, それまでに翻訳できた分は, キャッシュに入っているので, 保存する
-    let changed = match &result {
-        Ok((_, added)) => *added > 0,
-        Err(_) => true,
-    };
-    if changed {
+    let mlkit = MlKit { app: app.clone() };
+    let translated = commands::translate(
+        &state,
+        mlkit,
+        MLKIT_AVAILABLE,
+        &texts,
+        scope.as_deref(),
+        fresh.unwrap_or(false),
+    )
+    .await;
+    if translated.changed {
         schedule_save(&app);
     }
-    let (results, _) = result?;
-
-    Ok(results)
+    translated.result
 }
 
 /// キャッシュの保存を予約する ([`SAVE_DELAY`] のあとに, 1 回だけ書く).
 ///
 /// 依頼のたびに, キャッシュ全体 (数 MB になる) を書き直すと, 遅くなる. 続けて翻訳したときは, まとめて書く.
-/// ロックの中では写しだけを作り, JSON にして書くのは, 別のスレッドで行う (翻訳を止めない).
-/// キャッシュが書けなくても, 翻訳は続ける.
+/// 書くのは, 別のスレッドで行う (翻訳を止めない). キャッシュが書けなくても, 翻訳は続ける.
+#[cfg(not(tarpaulin_include))]
 fn schedule_save(app: &tauri::AppHandle) {
     let state = app.state::<AppState>();
     if state.save_pending.swap(true, Ordering::AcqRel) {
@@ -221,17 +130,8 @@ fn schedule_save(app: &tauri::AppHandle) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(SAVE_DELAY).await;
-        let state = app.state::<AppState>();
-        // 写しを作る前に, 予約を外す (書いている間に増えた分は, 次の予約で書く)
-        state.save_pending.store(false, Ordering::Release);
-        let Ok(snapshot) = state.cache.lock().map(|cache| cache.snapshot()) else {
-            return;
-        };
-        let path = state.dir.join(CACHE_FILE);
-        let _ = tokio::task::spawn_blocking(move || {
-            std::fs::write(path, translate::entries_to_json(&snapshot))
-        })
-        .await;
+        let _ = tokio::task::spawn_blocking(move || commands::save_cache(&app.state::<AppState>()))
+            .await;
     });
 }
 
@@ -275,13 +175,14 @@ enum Exported {
 ///
 /// `stamp` は, 書き出した日時 (画面が, 端末の時刻で作る. 例: `20261017-1530`). Google Drive は, 同じ名前でも
 /// 上書きしないので, 名前に日時を入れて, どれが新しいか分かるようにする.
+#[cfg(not(tarpaulin_include))]
 #[tauri::command]
 async fn export_cache(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
     stamp: String,
 ) -> Result<Exported, String> {
-    let snapshot = state.cache.lock().map_err(|e| e.to_string())?.snapshot();
+    let snapshot = commands::cache_snapshot(&state)?;
     // ファイルの名前は, アプリ (サイト) ごとに分ける (別のアプリのキャッシュと, 取り違えない)
     let name = export_name(state.site.host, &stamp);
 
@@ -291,6 +192,7 @@ async fn export_cache(
 /// 文章をファイルに書き出す (Android は Google Drive のアプリに渡す. PC は保存の画面を開く).
 ///
 /// `content` は, 書き出す文章を作る関数 (大きいので, 別のスレッドで作る).
+#[cfg(not(tarpaulin_include))]
 async fn export_text(
     app: &tauri::AppHandle,
     name: String,
@@ -340,50 +242,39 @@ async fn export_text(
 /// アプリのログの末尾を返す (ローテート済みのファイルも含めて, [`logging::MAX_READ_BYTES`] まで).
 ///
 /// 設定の画面の「ログを見る」から呼ぶ.
+#[cfg(not(tarpaulin_include))]
 #[tauri::command]
 async fn read_log(state: State<'_, AppState>) -> Result<String, String> {
-    let path = logging::log_path(&state.dir);
-    tokio::task::spawn_blocking(move || {
-        logging::read_tail(&path, logging::MAX_BACKUPS, logging::MAX_READ_BYTES)
-    })
-    .await
-    .map_err(|e| e.to_string())?
-    .map_err(|e| e.to_string())
+    commands::read_log(&state)
 }
 
 /// アプリのログを消す.
+#[cfg(not(tarpaulin_include))]
 #[tauri::command]
 fn clear_log(state: State<'_, AppState>) -> Result<(), String> {
-    logging::clear_logs(&logging::log_path(&state.dir), logging::MAX_BACKUPS)
-        .map_err(|e| e.to_string())?;
-    log::info!("Cleared the log");
-
-    Ok(())
+    commands::clear_log(&state)
 }
 
 /// アプリのログを書き出す (書き出し方は, 翻訳のキャッシュと同じ. `stamp` は書き出した日時).
 ///
 /// 問題が起きたときに, ログをほかの端末で見たり, 送ったりするために使う.
+#[cfg(not(tarpaulin_include))]
 #[tauri::command]
 async fn export_log(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
     stamp: String,
 ) -> Result<Exported, String> {
-    let path = logging::log_path(&state.dir);
+    let dir = state.dir.clone();
     let name = log_export_name(state.site.host, &stamp);
-    // ログ全体 (最大で約 20 MB) を書き出す
-    let max = logging::MAX_LOG_BYTES * u64::from(logging::MAX_BACKUPS + 1);
 
-    export_text(&app, name, move || {
-        logging::read_tail(&path, logging::MAX_BACKUPS, max).unwrap_or_else(|e| e.to_string())
-    })
-    .await
+    export_text(&app, name, move || commands::log_for_export(&dir)).await
 }
 
 /// 書き出したキャッシュを読み込んで, 端末のキャッシュに足し合わせる (選択の画面を開く).
 ///
 /// 返すのは, 新しく足した翻訳の数. 選ぶのをやめたら null.
+#[cfg(not(tarpaulin_include))]
 #[tauri::command]
 async fn import_cache(
     app: tauri::AppHandle,
@@ -401,11 +292,7 @@ async fn import_cache(
         .await
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
-    let added = state
-        .cache
-        .lock()
-        .map_err(|e| e.to_string())?
-        .merge_json(&text)?;
+    let added = commands::merge_cache(&state, &text)?;
     if added > 0 {
         schedule_save(&app);
     }
@@ -413,59 +300,31 @@ async fn import_cache(
     Ok(Some(added))
 }
 
-/// バックエンドとキャッシュで翻訳する (`batch` 個ずつ, キャッシュに入れる).
-async fn translate_with<B: Backend>(
-    state: &State<'_, AppState>,
-    namespace: &str,
-    backend: &B,
-    texts: &[String],
-    batch: usize,
-    fresh: bool,
-) -> Result<(Vec<String>, usize), String> {
-    translate::translate_with_cache(&state.cache, backend, namespace, texts, batch, fresh).await
-}
-
 /// キャッシュにある翻訳を返す (通信しない. 今のサービスのキャッシュ. ない文章は, null).
 ///
 /// 画面は, 翻訳を始める前に呼んで, 翻訳できている分を先に表示し, 残りだけを翻訳に渡す.
+#[cfg(not(tarpaulin_include))]
 #[tauri::command]
 fn lookup_cache(
     state: State<'_, AppState>,
     texts: Vec<String>,
     scope: Option<String>,
 ) -> Result<Vec<Option<String>>, String> {
-    let namespace = {
-        let settings = state.settings.lock().map_err(|e| e.to_string())?;
-        translate::scoped_namespace(
-            &settings.provider.namespace(&settings.gemini_model),
-            scope.as_deref(),
-        )
-    };
-
-    translate::lookup_cache(&state.cache, &namespace, &texts)
+    commands::lookup_cache(&state, &texts, scope.as_deref())
 }
 
 /// 設定を返す (API キーそのものは、画面に返さない).
+#[cfg(not(tarpaulin_include))]
 #[tauri::command]
 fn get_settings(state: State<'_, AppState>) -> Result<View, String> {
-    Ok(state
-        .settings
-        .lock()
-        .map_err(|e| e.to_string())?
-        .view(MLKIT_AVAILABLE))
+    commands::get_settings(&state, MLKIT_AVAILABLE)
 }
 
 /// 設定を変えて保存する.
+#[cfg(not(tarpaulin_include))]
 #[tauri::command]
 fn set_settings(state: State<'_, AppState>, update: Update) -> Result<View, String> {
-    let mut settings = state.settings.lock().map_err(|e| e.to_string())?;
-    if update.provider == Provider::Mlkit && !MLKIT_AVAILABLE {
-        return Err("ML Kit is available only on Android".to_string());
-    }
-    settings.apply(&update);
-    settings.save(&state.dir)?;
-
-    Ok(settings.view(MLKIT_AVAILABLE))
+    commands::set_settings(&state, &update, MLKIT_AVAILABLE)
 }
 
 /// アプリの Tauri ビルダーを作る (コマンドと状態は、設定済み).
@@ -473,6 +332,7 @@ fn set_settings(state: State<'_, AppState>, update: Update) -> Result<View, Stri
 /// ML Kit のプラグイン (`tauri_plugin_mlkit::init()`) は、Android のビルドが、アプリの直接の依存から
 /// 見つけるので、アプリ側で `.plugin(...)` に足す. ダイアログとファイルのプラグインも、アプリの `Cargo.toml` の
 /// 直接の依存に入れる (Android のプロジェクトに、プラグインを含めるため).
+#[cfg(not(tarpaulin_include))]
 pub fn builder(site: Site) -> tauri::Builder<tauri::Wry> {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -482,18 +342,7 @@ pub fn builder(site: Site) -> tauri::Builder<tauri::Wry> {
             let dir = app.path().app_data_dir()?;
             logging::init_logging(&logging::log_path(&dir));
             log::info!("Started for {} ({})", site.host, env!("CARGO_PKG_VERSION"));
-            let cache = std::fs::read_to_string(dir.join(CACHE_FILE))
-                .map(|text| translate::load_cache(&text))
-                .unwrap_or_else(|_| translate::load_cache("[]"));
-            app.manage(AppState {
-                settings: Mutex::new(Settings::load(&dir)),
-                cache: Mutex::new(cache),
-                save_pending: AtomicBool::new(false),
-                client: docs::build_client(site)?,
-                api_client: docs::build_api_client(site)?,
-                site,
-                dir,
-            });
+            app.manage(AppState::new(site, dir)?);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

@@ -29,6 +29,8 @@ env_logger = "0.11"
 [dev-dependencies]
 # ログのテストの, 一時的なディレクトリ
 tempfile = "3"
+# 翻訳の API とドキュメントのサイトの代わりの, テスト用の HTTP サーバー
+mockito = "1"
 
 # cargo tarpaulin の除外 (`#[cfg(not(tarpaulin_include))]`) を, 未知の cfg として警告しない
 [lints.rust]

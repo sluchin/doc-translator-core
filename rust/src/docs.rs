@@ -49,16 +49,26 @@ pub fn build_client(site: Site) -> Result<reqwest::Client, String> {
         .user_agent(site.user_agent)
         .timeout(TIMEOUT)
         .redirect(Policy::custom(move |attempt| {
-            if attempt.previous().len() >= MAX_REDIRECTS {
-                attempt.error("too many redirects")
-            } else if site.allows(attempt.url().as_str()) {
-                attempt.follow()
-            } else {
-                attempt.error("redirected out of the documentation host")
+            match check_redirect(site, attempt.previous().len(), attempt.url().as_str()) {
+                Ok(()) => attempt.follow(),
+                Err(reason) => attempt.error(reason),
             }
         }))
         .build()
         .map_err(|e| e.to_string())
+}
+
+/// リダイレクトをたどってよいか (回数の上限までで, 行き先がドキュメントのホスト).
+///
+/// `previous` は, これまでにたどった回数. たどれないときは, その理由.
+pub fn check_redirect(site: Site, previous: usize, url: &str) -> Result<(), &'static str> {
+    if previous >= MAX_REDIRECTS {
+        Err("too many redirects")
+    } else if site.allows(url) {
+        Ok(())
+    } else {
+        Err("redirected out of the documentation host")
+    }
 }
 
 /// 翻訳の API に使う HTTP クライアントを作る (リダイレクトは, たどらない).
@@ -99,6 +109,11 @@ pub async fn fetch_text(
     if !site.allows(url) {
         return Err(format!("Not a documentation page: {url}"));
     }
+    get_text(client, url, kind).await
+}
+
+/// URL のテキストを取得して, 状態, 種類, 大きさを確かめる (ホストは, 呼ぶ前に確かめておく).
+pub async fn get_text(client: &reqwest::Client, url: &str, kind: Kind) -> Result<String, String> {
     let response = client.get(url).send().await.map_err(|e| e.to_string())?;
     check_response(
         response.status().as_u16(),

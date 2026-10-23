@@ -238,3 +238,24 @@ fn test_clear_logs_fails_when_it_cannot_remove() {
     fs::create_dir(&other).unwrap();
     assert!(clear_logs(&other, 0).is_err());
 }
+
+#[test]
+fn read_tail_fails_when_it_cannot_open() {
+    let dir = tempdir().unwrap();
+    // ディレクトリの代わりにファイルがあるので, 開けない (ない, ではない)
+    let file = dir.path().join("logs");
+    fs::write(&file, "x").unwrap();
+    assert!(read_tail(&file.join("app.log"), 0, 1024).is_err());
+}
+
+#[test]
+fn rotating_file_flush() {
+    let dir = tempdir().unwrap();
+    let mut file = RotatingFile::open(&dir.path().join("app.log"), 1024, 1).unwrap();
+    file.write_all(b"line\n").unwrap();
+    file.flush().unwrap();
+    assert_eq!(
+        fs::read_to_string(dir.path().join("app.log")).unwrap(),
+        "line\n"
+    );
+}

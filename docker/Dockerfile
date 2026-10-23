@@ -61,6 +61,12 @@ ENV GRADLE_USER_HOME=/gradle-home
 ENV npm_config_cache=/npm-cache
 RUN mkdir -p /gradle-home /npm-cache && chmod 777 /gradle-home /npm-cache
 
+# Rust のカバレッジ (cargo tarpaulin). ソースからのビルドは時間がかかるので, ビルド済みのものを入れる
+ARG TARPAULIN_VERSION=0.37.5
+RUN curl -fsSL https://github.com/xd009642/tarpaulin/releases/download/${TARPAULIN_VERSION}/cargo-tarpaulin-x86_64-unknown-linux-gnu.tar.gz \
+        | tar -xz -C /usr/local/cargo/bin cargo-tarpaulin && \
+    chmod a+rx /usr/local/cargo/bin/cargo-tarpaulin
+
 RUN git config --system --add safe.directory '*'
 
 WORKDIR /workspace

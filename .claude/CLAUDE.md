@@ -4,7 +4,7 @@
 
 - `ts/lib/`: DOM に依存する処理。行と分岐のカバレッジ 100% (Vitest + jsdom)。サイトごとの違いは `SiteProfile` の引数で受ける (特定のサイトの名前を書かない)。テストの HTML は作り物 (ドキュメントの文章を置かない)。
 - `ts/ui/`: React の画面。薄く保つ。テストは置かない。
-- `rust/`: `docs.rs` (取得と URL の検査。ホストは `Site`)、`translate.rs` (`Backend`: Google, Gemini。キャッシュ)、`plain.rs` (ML Kit 用の HTML とテキストの変換)、`settings.rs`、`lib.rs` (`builder(site)`)。
+- `rust/`: `docs.rs` (取得と URL の検査。ホストは `Site`)、`translate.rs` (`Backend`: Google, Gemini。キャッシュ)、`plain.rs` (ML Kit 用の HTML とテキストの変換)、`settings.rs`、`commands.rs` (画面から呼ぶコマンドの本体。`AppState` を受け取る普通の関数)、`lib.rs` (`State` と `AppHandle` を `commands` に渡すだけの Tauri のコマンド、保存の画面、`builder(site)`)。行のカバレッジ 100% (cargo tarpaulin)。Tauri に依存して単体テストできない薄い部分だけを `#[cfg(not(tarpaulin_include))]` で外す。翻訳の API の送り先 (`Endpoints`) は差し替えられるので、通信のテストはテスト用の HTTP サーバー (mockito) を使う (本物の API は呼ばない)。
 - `plugins/tauri-plugin-mlkit/`: ML Kit の Kotlin のプラグイン。Rust から直接呼ぶ。Android のパッケージは `jp.sluchin.zephyrdoc.mlkit` (名前はアプリを問わない共通の識別子なので、変えない)。
 - `docker/Dockerfile`: 開発用のイメージ。アプリの `docker-compose.yml` も、`shared/docker` をビルドのコンテキストにする。
 
