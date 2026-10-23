@@ -19,7 +19,7 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
     api: PluginApi<R, C>,
 ) -> crate::Result<Mlkit<R>> {
     #[cfg(target_os = "android")]
-    let handle = api.register_android_plugin("jp.sluchin.zephyrdoc.mlkit", "MlKitPlugin")?;
+    let handle = api.register_android_plugin("jp.doctranslator.mlkit", "MlKitPlugin")?;
     Ok(Mlkit(handle))
 }
 

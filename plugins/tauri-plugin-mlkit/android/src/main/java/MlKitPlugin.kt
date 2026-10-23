@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-package jp.sluchin.zephyrdoc.mlkit
+package jp.doctranslator.mlkit
 
 import android.app.Activity
 import android.content.ActivityNotFoundException

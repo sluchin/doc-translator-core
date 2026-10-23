@@ -5,7 +5,7 @@
 //! ドキュメントを, 開いたときに翻訳して表示するアプリの, 共通の Rust 側.
 //!
 //! ページの取得と翻訳の依頼 (API キーを使う通信) を受け持つ. HTML の解析と表示は, フロントエンド.
-//! アプリ (zephyr-doc, kotlin-doc) は, [`builder`] に, サイトの設定 [`Site`] を渡して使う.
+//! アプリ (`*-doc-trans`) は, [`builder`] に, サイトの設定 [`Site`] を渡して使う.
 
 pub mod commands;
 pub mod docs;

@@ -1,5 +1,5 @@
 # 共通のライブラリ (rust) と, ML Kit のプラグイン (plugins) の, テスト用のワークスペース.
-# アプリ (zephyr-doc, kotlin-doc) は, それぞれ, サブモジュールの中のパスを, 依存に書く.
+# アプリ (`*-doc-trans`) は, それぞれ, サブモジュールの中のパスを, 依存に書く.
 [workspace]
 resolver = "3"
 members = ["rust", "plugins/tauri-plugin-mlkit"]

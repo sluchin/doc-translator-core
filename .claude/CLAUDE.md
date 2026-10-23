@@ -1,17 +1,17 @@
 # プロジェクト設定
 
-ドキュメントを開いたときに翻訳して表示する Tauri アプリ (zephyr-doc、kotlin-doc) の、**共通のコード**。アプリはこのリポジトリをサブモジュール `shared/` として置く。**アプリごとの違いはここに書かない** (サイトの設定 `SiteProfile` と、Rust の `Site` でアプリが渡す)。
+ドキュメントを開いたときに翻訳して表示する Tauri アプリ (zephyr-doc-trans、kotlin-doc-trans など、`*-doc-trans`) の、**共通のコード**。アプリはこのリポジトリをサブモジュール `shared/` として置く。**アプリごとの違いはここに書かない** (サイトの設定 `SiteProfile` と、Rust の `Site` でアプリが渡す)。
 
 - `ts/lib/`: DOM に依存する処理。行と分岐のカバレッジ 100% (Vitest + jsdom)。サイトごとの違いは `SiteProfile` の引数で受ける (特定のサイトの名前を書かない)。テストの HTML は作り物 (ドキュメントの文章を置かない)。
 - `ts/ui/`: React の画面。薄く保つ。テストは置かない。
 - `rust/`: `docs.rs` (取得と URL の検査。ホストは `Site`)、`translate.rs` (`Backend`: Google, Gemini。キャッシュ)、`plain.rs` (ML Kit 用の HTML とテキストの変換)、`settings.rs`、`commands.rs` (画面から呼ぶコマンドの本体。`AppState` を受け取る普通の関数)、`lib.rs` (`State` と `AppHandle` を `commands` に渡すだけの Tauri のコマンド、保存の画面、`builder(site)`)。行のカバレッジ 100% (cargo tarpaulin)。Tauri に依存して単体テストできない薄い部分だけを `#[cfg(not(tarpaulin_include))]` で外す。翻訳の API の送り先 (`Endpoints`) は差し替えられるので、通信のテストはテスト用の HTTP サーバー (mockito) を使う (本物の API は呼ばない)。
-- `plugins/tauri-plugin-mlkit/`: ML Kit の Kotlin のプラグイン。Rust から直接呼ぶ。Android のパッケージは `jp.sluchin.zephyrdoc.mlkit` (名前はアプリを問わない共通の識別子なので、変えない)。
+- `plugins/tauri-plugin-mlkit/`: ML Kit の Kotlin のプラグイン。Rust から直接呼ぶ。Android のパッケージは `jp.doctranslator.mlkit` (アプリを問わない共通の識別子。`build.gradle.kts` の `namespace`、`MlKitPlugin.kt` の `package`、`mobile.rs` の `register_android_plugin` をそろえる)。
 - `docker/Dockerfile`: 開発用のイメージ。アプリの `docker-compose.yml` も、`shared/docker` をビルドのコンテキストにする。
 
 ## 守ること
 
 - **共通のコードを変えるときは 2 つのアプリへの影響を考える。** 引数や型を変えたら、アプリ (`site.ts`、`lib.rs`) も、直す。変えたら、このリポジトリをコミットして push してから、各アプリで、サブモジュールの参照を更新する。
-- セキュリティの決まり (取得はアプリが渡したホストだけ。HTML は必ず `sanitize()` を通す。API キーは画面に返さない) は zephyr-doc の `.claude/CLAUDE.md` と同じ。
+- セキュリティの決まり (取得はアプリが渡したホストだけ。HTML は必ず `sanitize()` を通す。API キーは画面に返さない) は zephyr-doc-trans の `.claude/CLAUDE.md` と同じ。
 - ドキュメントの文章をリポジトリに置かない。
 - **ログ**: Rust は `log::debug!` / `info!` / `warn!` / `error!` (`rust/src/logging.rs`。標準エラー出力と、アプリのデータの `logs/app.log`)、TypeScript は `ts/lib/log.ts` の `log` (`console.*` を直接使わない。Rust へ送る)。デバッグ版はデバッグ以上、リリース版は情報以上 (判定は、`default_level` と `setupLog` の中)。API キーなどの秘密は書かない。ログの文字は英語。設定の画面の「ログを見る」(`ts/ui/LogDialog.tsx`。Rust の `read_log`、`clear_log`、`export_log`) で、新しい順に見て、絞り込み、書き出し、消せる (分け方は `ts/lib/logView.ts`)。Rust の panic と、画面の予期しないエラー (`captureErrors`) も、ログファイルに残す。
 - **サイトの見た目**: `ts/lib/siteLook.ts` (囲んでいた要素、CSS、ページの組み立て。テストあり) と `ts/ui/SiteDoc.tsx` (CSS の取得と iframe)。iframe は `sandbox="allow-same-origin"` (スクリプトは動かさない。リンクのクリックは、枠の外で受ける)。CSS は Rust の `fetch_css` で、ページと同じホストのものだけ取得する。本文の HTML は、今までどおり `sanitize()` を通す。サイトの JavaScript が組み直す本文は、アプリが `SiteProfile.siteLookRewrite` で組み直す (`rewriteForSiteLook`。組み直したあとも `sanitize()` を通す)。アプリの CSP の `font-src` に、サイトのホストを入れる。

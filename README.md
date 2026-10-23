@@ -2,8 +2,13 @@
 
 ドキュメントのサイトを**リンクを開いたときに** 取得して、日本語に翻訳して表示する Tauri アプリ (PC と Android) の、**共通のコード**です。アプリごとに、このリポジトリをサブモジュール (`shared/`) として置きます。
 
-- [zephyr-doc](https://github.com/sluchin/zephyr-doc): Zephyr のドキュメント
-- [kotlin-doc](https://github.com/sluchin/kotlin-doc): Kotlin のドキュメント
+- [zephyr-doc-trans](https://github.com/sluchin/zephyr-doc-trans): Zephyr のドキュメント
+- [kotlin-doc-trans](https://github.com/sluchin/kotlin-doc-trans): Kotlin のドキュメント
+- [rust-doc-trans](https://github.com/sluchin/rust-doc-trans): Rust (The Book と Nomicon) のドキュメント
+- [typescript-doc-trans](https://github.com/sluchin/typescript-doc-trans): TypeScript のドキュメント
+- [react-doc-trans](https://github.com/sluchin/react-doc-trans): React (日本語のサイト。翻訳しないで表示する) のドキュメント
+- [guile-doc-trans](https://github.com/sluchin/guile-doc-trans): Guile のドキュメント
+- [cpp-core-doc-trans](https://github.com/sluchin/cpp-core-doc-trans): C++ Core Guidelines のドキュメント
 
 ## 中身
 
@@ -17,7 +22,7 @@
 
 ## アプリの作り方
 
-アプリ (`zephyr-doc` を見本にする) に次のものを置きます。
+アプリ (`zephyr-doc-trans` を見本にする) に次のものを置きます。
 
 1. サブモジュール `shared/` (このリポジトリ)。
 2. サイトの設定 `src/site.ts` (`SiteProfile`: ホスト、パスの先頭、最初のページ、本文のセレクタ、取り除く要素、タイトルの末尾、メニューの取り方、もう 1 つのサイトへ切り替える `alt` (Rust の `Site` の `alt_host` と同じにする)、サイトが日本語のときの `japanese`: 翻訳せずにそのまま表示する)。

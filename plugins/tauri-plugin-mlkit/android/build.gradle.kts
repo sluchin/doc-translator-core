@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "jp.sluchin.zephyrdoc.mlkit"
+    namespace = "jp.doctranslator.mlkit"
     compileSdk = 37
 
     defaultConfig {
