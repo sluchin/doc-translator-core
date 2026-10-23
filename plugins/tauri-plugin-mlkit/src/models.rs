@@ -24,7 +24,3 @@ pub struct ShareRequest {
     /// 渡すファイルのパス (アプリのキャッシュのディレクトリの中).
     pub path: String,
 }
-
-/// Kotlin 側からの, ファイルを渡したときの応答 (中身はない).
-#[derive(Debug, Deserialize)]
-pub struct ShareResponse {}

@@ -8,7 +8,7 @@ use tauri::{
     plugin::{PluginApi, PluginHandle},
 };
 
-use crate::models::{ShareRequest, ShareResponse, TranslateRequest, TranslateResponse};
+use crate::models::{ShareRequest, TranslateRequest, TranslateResponse};
 
 #[cfg(target_os = "ios")]
 compile_error!("This plugin supports Android only");
@@ -41,7 +41,8 @@ impl<R: Runtime> Mlkit<R> {
     ///
     /// ファイルは, アプリのキャッシュのディレクトリに置く (Android の `FileProvider` が, そこだけを渡せる).
     pub async fn share_to_drive(&self, path: String) -> crate::Result<()> {
-        let _: ShareResponse = self
+        // Kotlin 側は, 画面を開いたら, 値なし (null) で返す. 中身は見ないので, 何でも受け取る
+        let _: serde::de::IgnoredAny = self
             .0
             .run_mobile_plugin_async("shareToDrive", ShareRequest { path })
             .await?;

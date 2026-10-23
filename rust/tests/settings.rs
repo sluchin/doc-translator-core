@@ -9,7 +9,8 @@ use std::fs;
 use doc_translator_core::settings::*;
 
 fn temp_dir(name: &str) -> std::path::PathBuf {
-    let dir = std::env::temp_dir().join(format!("doc-translator-test-{name}-{}", std::process::id()));
+    let dir =
+        std::env::temp_dir().join(format!("doc-translator-test-{name}-{}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     dir
 }
