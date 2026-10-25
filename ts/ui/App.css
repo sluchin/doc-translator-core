@@ -128,26 +128,6 @@ input {
   padding: 4px 6px;
 }
 
-/* タブ: 同じホストの、別のドキュメントを切り替える */
-.tabs {
-  display: flex;
-  gap: 4px;
-  padding: 0 8px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-}
-
-.tabs button {
-  flex: 1;
-  border-radius: 8px 8px 0 0;
-  border-bottom: 3px solid transparent;
-}
-
-.tabs button[aria-selected="true"] {
-  font-weight: bold;
-  border-bottom-color: var(--accent, currentColor);
-}
-
 .content-wrap {
   position: relative;
   flex: 1;
@@ -214,6 +194,40 @@ input {
   font-size: 0.95rem;
   white-space: nowrap;
   pointer-events: none;
+}
+
+/* メニューの, 表示の切り替え (サイト風, 原文, 設定) */
+.drawer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* メニューの, ドキュメントのタブ: 同じホストの、別のドキュメントを切り替える */
+.drawer-actions button[aria-pressed="true"] {
+  font-weight: bold;
+  background: var(--note-bg);
+  border-color: var(--accent, currentColor);
+}
+
+.drawer-docs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.drawer-docs button {
+  flex: 1;
+  border-radius: 8px 8px 0 0;
+  border-bottom: 3px solid transparent;
+}
+
+.drawer-docs button[aria-selected="true"] {
+  font-weight: bold;
+  border-bottom-color: var(--accent, currentColor);
 }
 
 .drawer-tabs {

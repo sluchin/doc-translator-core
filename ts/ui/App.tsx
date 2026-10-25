@@ -8,7 +8,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import "./App.css";
 import { Doc } from "./Doc";
-import { Drawer } from "./Drawer";
+import { Drawer, type DrawerAction } from "./Drawer";
 import { ScrollBar } from "./ScrollBar";
 import { SettingsDialog } from "./SettingsDialog";
 import { SiteDoc } from "./SiteDoc";
@@ -167,6 +167,30 @@ export default function App({ profile }: Props) {
     document.title = viewer.title ? `${viewer.title} - ${profile.name}` : profile.name;
   }, [viewer.title, profile.name]);
 
+  // 表示の切り替えは, メニュー (ナビゲーションドロワー) に置く (ツールバーを狭い画面に収めるため)
+  const actions: DrawerAction[] = [
+    {
+      // 切り替えのボタン (入っているときは, 押した見た目にする)
+      label: "サイト風",
+      pressed: siteLookOn,
+      title: siteLookOn
+        ? "アプリのシンプルな表示に戻します"
+        : "サイトの CSS で表示します。見出し、コード、表などが、サイトと同じ見た目になります",
+      onClick: toggleSiteLook,
+    },
+  ];
+  if (profile.japanese !== true) {
+    actions.push(
+      {
+        label: "原文",
+        pressed: viewer.lang !== "ja",
+        title: viewer.lang === "ja" ? "英語の原文を表示します" : "日本語に翻訳して表示します",
+        onClick: viewer.toggleLang,
+      },
+      { label: "⚙", ariaLabel: "設定", onClick: () => setSettings(true) },
+    );
+  }
+
   const submit = () => {
     const value = (address ?? viewer.url).trim();
     if (isDocUrl(value, profile)) {
@@ -178,11 +202,9 @@ export default function App({ profile }: Props) {
   return (
     <div className="app">
       <header className="toolbar">
-        {viewer.hasMenu && (
-          <button onClick={() => setDrawer(true)} aria-label="メニュー">
-            ☰
-          </button>
-        )}
+        <button onClick={() => setDrawer(true)} aria-label="メニュー">
+          ☰
+        </button>
         <button onClick={viewer.goBack} disabled={!viewer.canBack} aria-label="戻る">
           ←
         </button>
@@ -248,45 +270,10 @@ export default function App({ profile }: Props) {
               : profile.alt.toLabel}
           </button>
         )}
-        <button
-          onClick={toggleSiteLook}
-          title={
-            siteLookOn
-              ? "アプリのシンプルな表示に戻します"
-              : "サイトの CSS で表示します。見出し、コード、表などが、サイトと同じ見た目になります"
-          }
-        >
-          {/* ボタンの名前は、押すと何が起きるか (今の状態ではない) */}
-          {siteLookOn ? "元に戻す" : "サイト風にする"}
-        </button>
         {profile.japanese !== true && wide && (
           <button onClick={toggleSideBySide}>{sideBySide ? "原文を閉じる" : "原文を並べる"}</button>
         )}
-        {profile.japanese !== true && (
-          <button onClick={viewer.toggleLang}>
-            {viewer.lang === "ja" ? "原文に戻す" : "日本語に翻訳"}
-          </button>
-        )}
-        {profile.japanese !== true && (
-          <button onClick={() => setSettings(true)} aria-label="設定">
-            ⚙
-          </button>
-        )}
       </header>
-      {viewer.tabs.length > 0 && (
-        <nav className="tabs" role="tablist" aria-label="ドキュメント">
-          {viewer.tabs.map((label, index) => (
-            <button
-              key={label}
-              role="tab"
-              aria-selected={index === viewer.tab}
-              onClick={() => viewer.selectTab(index)}
-            >
-              {label}
-            </button>
-          ))}
-        </nav>
-      )}
       {(viewer.loading || viewer.progress) && (
         <div className="status" role="status">
           {viewer.loading
@@ -375,11 +362,15 @@ export default function App({ profile }: Props) {
         open={drawer}
         onClose={() => setDrawer(false)}
         menu={viewer.menu}
+        hasMenu={viewer.hasMenu}
+        actions={actions}
+        docs={viewer.tabs}
+        doc={viewer.tab}
+        onSelectDoc={viewer.selectTab}
         currentUrl={viewer.url}
         lang={profile.japanese === true ? "en" : viewer.lang}
         bookmarks={viewer.bookmarks}
         onRemoveBookmark={viewer.removeBookmark}
-        onHome={viewer.home}
         onOpen={viewer.open}
         translate={viewer.translate}
       />

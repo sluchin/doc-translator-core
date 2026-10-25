@@ -17,6 +17,20 @@ import type { Bookmark } from "../lib/saved";
 import type { TranslateFn } from "../lib/translatePage";
 import type { Lang } from "./useViewer";
 
+/** メニューに置く, 表示を切り替えるボタン. */
+export interface DrawerAction {
+  /** ボタンの名前 (短く). */
+  label: string;
+  /** 読み上げの名前 (名前が記号だけのとき). */
+  ariaLabel?: string;
+  /** ボタンの説明. */
+  title?: string;
+  /** 切り替えのボタンなら, 今, 入っているか. */
+  pressed?: boolean;
+  /** 押したとき (メニューは閉じる). */
+  onClick: () => void;
+}
+
 /** メニューの画面の引数. */
 interface Props {
   /** 開いているか. */
@@ -25,6 +39,16 @@ interface Props {
   onClose: () => void;
   /** メニュー (目次). */
   menu: readonly MenuItem[];
+  /** メニュー (目次) があるか (無ければ, 目次のタブを出さない). */
+  hasMenu: boolean;
+  /** 表示を切り替えるボタン (サイト風, 原文, 設定など). */
+  actions: readonly DrawerAction[];
+  /** ドキュメントのタブの名前 (同じホストの, 別のドキュメント. 無ければ空). */
+  docs: readonly string[];
+  /** 選んでいるドキュメントのタブ. */
+  doc: number;
+  /** ドキュメントのタブを選ぶ. */
+  onSelectDoc: (index: number) => void;
   /** 今のページの URL (開いておく項目と、印を付ける項目を決める). */
   currentUrl: string;
   /** 表示の言語 (日本語なら、メニューの名前も翻訳する). */
@@ -33,8 +57,6 @@ interface Props {
   bookmarks: readonly Bookmark[];
   /** しおりを外す. */
   onRemoveBookmark: (url: string) => void;
-  /** トップのページを開く. */
-  onHome: () => void;
   /** ページを開く. */
   onOpen: (url: string) => void;
   /** メニューの名前を翻訳する関数 (今の版のキャッシュ). */
@@ -106,7 +128,8 @@ function Item({ item, currentUrl, onOpen }: ItemProps) {
 }
 
 /**
- * ナビゲーションドロワー: ドキュメントのメニュー (目次) を、横から出す.
+ * ナビゲーションドロワー: ドキュメントのメニュー (目次) と, 表示の切り替え (サイト風, 原文, 設定),
+ * ドキュメントのタブを、横から出す.
  *
  * ページを進めても、いつでも、☰ のボタンで開ける. 日本語の表示のときは、開いたときに、
  * メニューの名前を翻訳する (翻訳は、キャッシュされる). 項目を押すと、ページを開いて、閉じる.
@@ -118,11 +141,15 @@ export function Drawer({
   open,
   onClose,
   menu,
+  hasMenu,
+  actions,
+  docs,
+  doc,
+  onSelectDoc,
   currentUrl,
   lang,
   bookmarks,
   onRemoveBookmark,
-  onHome,
   onOpen,
   translate,
 }: Props) {
@@ -168,10 +195,16 @@ export function Drawer({
     onOpen(url);
     onClose();
   };
-  const home = () => {
-    onHome();
+  const act = (action: DrawerAction) => {
+    action.onClick();
     onClose();
   };
+  const selectDoc = (index: number) => {
+    onSelectDoc(index);
+    onClose();
+  };
+  // 目次が無ければ, しおりを出す
+  const shownTab = hasMenu ? tab : "bookmarks";
 
   return (
     <div className="drawer-layer">
@@ -184,20 +217,50 @@ export function Drawer({
             ✕
           </button>
         </div>
+        {actions.length > 0 && (
+          <div className="drawer-actions">
+            {actions.map((action) => (
+              <button
+                key={action.label}
+                aria-label={action.ariaLabel}
+                aria-pressed={action.pressed}
+                title={action.title}
+                onClick={() => act(action)}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {docs.length > 0 && (
+          <div className="drawer-docs" role="tablist" aria-label="ドキュメント">
+            {docs.map((label, index) => (
+              <button
+                key={label}
+                role="tab"
+                aria-selected={index === doc}
+                onClick={() => selectDoc(index)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="drawer-tabs" role="tablist">
-          <button onClick={home}>⌂ トップ</button>
-          <button role="tab" aria-selected={tab === "menu"} onClick={() => setTab("menu")}>
-            目次
-          </button>
+          {hasMenu && (
+            <button role="tab" aria-selected={tab === "menu"} onClick={() => setTab("menu")}>
+              目次
+            </button>
+          )}
           <button
             role="tab"
-            aria-selected={tab === "bookmarks"}
+            aria-selected={shownTab === "bookmarks"}
             onClick={() => setTab("bookmarks")}
           >
             しおり ({bookmarks.length})
           </button>
         </div>
-        {tab === "bookmarks" ? (
+        {shownTab === "bookmarks" ? (
           bookmarks.length === 0 ? (
             <p className="drawer-empty">しおりはありません。ツールバーの ☆ で付けられます。</p>
           ) : (
