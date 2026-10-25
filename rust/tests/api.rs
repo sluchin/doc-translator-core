@@ -225,6 +225,55 @@ async fn google_backend_sends_the_key_and_reads_the_answer() {
 }
 
 #[tokio::test]
+async fn google_backend_retries_when_busy() {
+    let mut server = Server::new_async().await;
+    let _busy = server
+        .mock("POST", "/busy")
+        .with_status(503)
+        .with_body(
+            json!({"error": {"message": "The service is unavailable at this time."}}).to_string(),
+        )
+        .expect(1)
+        .create_async()
+        .await;
+    let backend = GoogleBackend::with_url(
+        reqwest::Client::new(),
+        "key".into(),
+        &format!("{}/busy", server.url()),
+    );
+    let _ok = server
+        .mock("POST", "/busy")
+        .with_body(json!({"data": {"translations": [{"translatedText": "訳"}]}}).to_string())
+        .create_async()
+        .await;
+    assert_eq!(backend.translate(&texts(&["a"])).await, Ok(texts(&["訳"])));
+}
+
+#[tokio::test]
+async fn google_backend_gives_up_when_busy_too_long() {
+    let mut server = Server::new_async().await;
+    let busy = server
+        .mock("POST", "/busy")
+        .with_status(503)
+        .with_body(
+            json!({"error": {"message": "The service is unavailable at this time."}}).to_string(),
+        )
+        .expect(3)
+        .create_async()
+        .await;
+    let backend = GoogleBackend::with_url(
+        reqwest::Client::new(),
+        "key".into(),
+        &format!("{}/busy", server.url()),
+    );
+    assert_eq!(
+        backend.translate(&texts(&["a"])).await,
+        Err("Translation failed (HTTP 503): The service is unavailable at this time.".to_string())
+    );
+    busy.assert_async().await;
+}
+
+#[tokio::test]
 async fn gemini_backend_translates_and_keeps_the_blank_texts() {
     let mut server = Server::new_async().await;
     let _ok = server

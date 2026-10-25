@@ -48,6 +48,9 @@ pub const SOURCE: &str = "en";
 /// キャッシュに残す文章の数の上限 (超えたら, 古いものから捨てる).
 const CACHE_CAPACITY: usize = 20_000;
 
+/// Google Cloud Translation に、やり直す回数 (混んでいるとき: 429 と 503. 大きなページで, 続けて送ると返る).
+const GOOGLE_RETRIES: u32 = 2;
+
 /// Google Cloud Translation (Basic, v2) の URL.
 pub const GOOGLE_URL: &str = "https://translation.googleapis.com/language/translate/v2";
 
@@ -346,21 +349,34 @@ impl Backend for GoogleBackend {
         &self,
         texts: &[String],
     ) -> impl Future<Output = Result<Vec<String>, String>> + Send {
-        let request = self
-            .client
-            .post(&self.url)
-            .header("X-goog-api-key", &self.api_key)
-            .header(reqwest::header::CONTENT_TYPE, "application/json")
-            .body(google_body(texts));
+        let client = self.client.clone();
+        let url = self.url.clone();
+        let key = self.api_key.clone();
+        let body = google_body(texts);
 
+        // 混んでいるときは, 少し待って, やり直す
         async move {
-            let response = request.send().await.map_err(|e| e.to_string())?;
-            let status = response.status().as_u16();
-            let text = response.text().await.map_err(|e| e.to_string())?;
-            if status != 200 {
-                return Err(google_error(status, &text));
+            let mut attempt = 0;
+            loop {
+                let response = client
+                    .post(&url)
+                    .header("X-goog-api-key", &key)
+                    .header(reqwest::header::CONTENT_TYPE, "application/json")
+                    .body(body.clone())
+                    .send()
+                    .await
+                    .map_err(|e| e.to_string())?;
+                let status = response.status().as_u16();
+                let text = response.text().await.map_err(|e| e.to_string())?;
+                if status == 200 {
+                    return parse_google(&text);
+                }
+                if !is_retryable(status) || attempt >= GOOGLE_RETRIES {
+                    return Err(google_error(status, &text));
+                }
+                tokio::time::sleep(retry_delay(attempt)).await;
+                attempt += 1;
             }
-            parse_google(&text)
         }
     }
 }
