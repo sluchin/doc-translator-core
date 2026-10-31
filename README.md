@@ -97,6 +97,8 @@ docker compose run --rm format     # 整形の確認 (format-fix で整形)
 docker compose run --rm analyze    # tsc、ESLint、Clippy
 ```
 
+今後の予定や検討事項については、[TODO.md](TODO.md) を参照してください。
+
 ## ライセンス
 
 GPL-3.0-or-later。
