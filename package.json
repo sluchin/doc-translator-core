@@ -8,8 +8,10 @@
     "test": "vitest run",
     "coverage": "vitest run --coverage",
     "lint": "eslint .",
-    "format": "prettier --check .",
-    "format:fix": "prettier --write ."
+    "format": "prettier --check . && npm run format:markdown:check",
+    "format:fix": "prettier --write . && npm run format:markdown",
+    "format:markdown": "markdownlint-cli2 --fix",
+    "format:markdown:check": "markdownlint-cli2"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -31,6 +33,7 @@
     "prettier": "^3.9.10",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.2",
-    "vitest": "^5.0.4"
+    "vitest": "^5.0.4",
+    "markdownlint-cli2": "^0.17.2"
   }
 }
