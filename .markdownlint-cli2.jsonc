@@ -23,10 +23,9 @@
     "build/**",
     "build-*/**",
     ".venv/**",
-    "docs/**",
     "coverage/**",
     "shared/**",
     "plugins/**",
-    "*.zip",
+    "*.zip"
   ],
 }
