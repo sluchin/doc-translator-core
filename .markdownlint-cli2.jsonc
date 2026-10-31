@@ -26,6 +26,6 @@
     "coverage/**",
     "shared/**",
     "plugins/**",
-    "*.zip"
+    "*.zip",
   ],
 }
