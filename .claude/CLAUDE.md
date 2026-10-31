@@ -33,3 +33,7 @@
 
 - 英語。件名は Conventional Commits (`type(scope): description`。scope: `ts` `rust` `mlkit` `docker`)。本文はハイフンで始まる箇条書き。
 - `Co-Authored-By` と Claude 帰属行を含めない。
+
+## 開発ルール
+
+- Markdown (`*.md`) の日本語の文章は、句読点に「、」「。」を使う (「,」「.」は使わない)。インラインコード・コードブロック・URL・ファイル名・数値 (`1.2.0`、`1,000`) は対象外。見出しや番号付きリストの「1.」の形は変えない。`docs/` の生成物と、この `CLAUDE.md` は対象外。
