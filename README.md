@@ -6,7 +6,7 @@
 - [kotlin-doc-trans](https://github.com/sluchin/kotlin-doc-trans): Kotlin のドキュメント
 - [rust-doc-trans](https://github.com/sluchin/rust-doc-trans): Rust (The Book と Nomicon) のドキュメント
 - [typescript-doc-trans](https://github.com/sluchin/typescript-doc-trans): TypeScript のドキュメント
-- [react-doc-trans](https://github.com/sluchin/react-doc-trans): React (日本語のサイト。翻訳しないで表示する) のドキュメント
+- [react-doc-ja](https://github.com/sluchin/react-doc-ja): React (日本語のサイト。翻訳しないで表示する) のドキュメント
 - [guile-doc-trans](https://github.com/sluchin/guile-doc-trans): Guile のドキュメント
 - [cpp-core-doc-trans](https://github.com/sluchin/cpp-core-doc-trans): C++ Core Guidelines のドキュメント
 
