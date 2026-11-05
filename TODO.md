@@ -14,3 +14,9 @@
 - **アプリ (zephyr-doc-trans、kotlin-doc-trans、react-doc-ja、typescript-doc-trans) のビルドが、デバッグとリリースで分かれていない**: `docker-compose.yml` の `build-desktop` (`tauri build --debug --no-bundle`) と `build-android` (`tauri android build --debug --apk`) は、デバッグビルドだけ。`release.yml` も、PC はリリースビルドだが、Android の APK はデバッグ鍵で署名したデバッグ版 (`app-universal-debug.apk`)。
   - **やること**: 各アプリの `docker-compose.yml` に、リリースビルドのサービス (`build-desktop-release` と `build-android-release` など) を足す。`release.yml` の Android を、リリースビルド (`--debug` を外す) にして、リリースの鍵で署名する。手順を、各アプリの `README.md` に書く。
   - **確認すること**: リリースの鍵 (keystore) の作り方と置き場所 (リポジトリに置かない。CI では GitHub の Secrets から読む)。`src-tauri/gen/android` の署名の設定 (`build.gradle.kts` の `signingConfigs`)。デバッグ版を入れた端末に、リリース版を上書きで入れられないこと (署名が違うので、一度アンインストールが要る。端末の翻訳のキャッシュと設定が消える)。リリースビルドでは、Rust の panic や、開発者ツールの扱いが変わらないか。
+
+## 文書の翻訳アプリ全体
+
+- [ ] Python の文書の日本語訳のアプリ (python-doc-ja) を、ほかのアプリと同じ作りで作る。
+- [x] 文書のアプリ (`*-doc`) の画面を見やすくする (画面の上のボタンを 1 段に収める)。
+- [x] react-doc-trans の名前を react-doc-ja に変える。
