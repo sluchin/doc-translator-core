@@ -55,19 +55,28 @@ impl Provider {
 }
 
 /// 設定.
+///
+/// API キーは, 画面で入れたものだけを保存する. 実際に使うキーは, 保存したキーが空でなければそれ, 空 (まだ入れていない,
+/// 画面で消した) なら, ビルドのときの環境変数のキー, どちらもなければ, ない (設定が要る).
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
     /// 翻訳に使うサービス.
     pub provider: Provider,
-    /// Google Cloud Translation の API キー (まだ入れていなければ None. 画面で消したら, 空).
+    /// 画面で入れた Google Cloud Translation の API キー (まだ入れていなければ None. 画面で消したら, 空).
     pub api_key: Option<String>,
-    /// Gemini API のキー (まだ入れていなければ None. 画面で消したら, 空).
+    /// 画面で入れた Gemini API のキー (まだ入れていなければ None. 画面で消したら, 空).
     pub gemini_key: Option<String>,
     /// Gemini のモデル.
     pub gemini_model: String,
     /// 無料の Google 翻訳に、同時に送る依頼の数.
     pub free_parallel: usize,
+    /// ビルドのときの環境変数の, Google のキー (保存しない. 保存したキーが空のときに使う).
+    #[serde(skip)]
+    pub build_api_key: Option<String>,
+    /// ビルドのときの環境変数の, Gemini のキー (保存しない. 保存したキーが空のときに使う).
+    #[serde(skip)]
+    pub build_gemini_key: Option<String>,
 }
 
 /// ビルドのときに, 環境変数 `GOOGLE_CLOUD_TRANSLATION_API_KEY` に入っていた, Google の API キー (なければ None).
@@ -79,7 +88,7 @@ const BUILD_GOOGLE_KEY: Option<&str> = option_env!("GOOGLE_CLOUD_TRANSLATION_API
 const BUILD_GEMINI_KEY: Option<&str> = option_env!("GEMINI_API_KEY");
 
 impl Default for Settings {
-    /// 既定の設定 (API キーは, ビルドのときの環境変数にあれば, それ).
+    /// 既定の設定 (ビルドのときの環境変数にキーがあれば, 保存したキーが空のときに使うキーとして持つ).
     fn default() -> Self {
         Self::with_keys(BUILD_GOOGLE_KEY, BUILD_GEMINI_KEY)
     }
@@ -122,8 +131,7 @@ pub struct View {
 
 /// キーの変更を適用する (None なら変えない. 空白だけなら消す).
 ///
-/// 消したキーは, None ではなく, 空の文字列にする (None は, まだ入れていないキー. 読むときに,
-/// ビルドのときのキーを入れる. 消したキーには, 入れない).
+/// 消したキーは, 空の文字列にする (使うときに, ビルドのときのキーに替わる. ビルドのキーもなければ, ない).
 fn apply_key(current: &mut Option<String>, change: &Option<String>) {
     if let Some(value) = change {
         *current = Some(value.trim().to_string());
@@ -135,10 +143,15 @@ fn usable(key: &Option<String>) -> Option<&str> {
     key.as_deref().filter(|value| !value.is_empty())
 }
 
+/// 実際に使うキー: 保存したキーが空でなければそれ, 空ならビルドのときのキー, どちらもなければ None.
+fn effective<'a>(saved: &'a Option<String>, build: &'a Option<String>) -> Option<&'a str> {
+    usable(saved).or(build.as_deref())
+}
+
 impl Settings {
-    /// API キーの初期値を決めた, 既定の設定を作る (空白だけのキーは, ないものとする).
+    /// ビルドのときのキーを持つ, 既定の設定を作る (空白だけのキーは, ないものとする).
     ///
-    /// 保存した設定にキーの項目がなければ, この初期値になる. 画面でキーを消したときは, 消したまま (空) になる.
+    /// 保存するキーは空 (まだ入れていない). ビルドのキーは, 保存したキーが空のときに使う.
     pub fn with_keys(google: Option<&str>, gemini: Option<&str>) -> Self {
         let key = |value: Option<&str>| {
             value
@@ -148,34 +161,32 @@ impl Settings {
         };
         Self {
             provider: Provider::default(),
-            api_key: key(google),
-            gemini_key: key(gemini),
+            api_key: None,
+            gemini_key: None,
             gemini_model: DEFAULT_GEMINI_MODEL.to_string(),
             free_parallel: DEFAULT_PARALLEL,
+            build_api_key: key(google),
+            build_gemini_key: key(gemini),
         }
     }
 
     /// ディレクトリの設定を読む (なければ, 読めなければ, 既定).
     ///
-    /// まだ入れていないキー (None) は, ビルドのときのキーにする (前の版で保存した設定や, Android の
-    /// バックアップから戻った設定でも, ビルドのときのキーを使う).
+    /// ビルドのときのキーは, 保存しないで持つだけにする (保存したキーが空のときに使う. 環境変数を変えて
+    /// ビルドし直せば, 新しいキーになる).
     pub fn load(dir: &Path) -> Self {
         Self::load_with_keys(dir, BUILD_GOOGLE_KEY, BUILD_GEMINI_KEY)
     }
 
-    /// ディレクトリの設定を読んで, まだ入れていないキーを, 与えたキーにする ([Self::load] の中身).
+    /// ディレクトリの設定を読んで, 与えたキーをビルドのときのキーとして持つ ([Self::load] の中身).
     pub fn load_with_keys(dir: &Path, google: Option<&str>, gemini: Option<&str>) -> Self {
-        let initial = Self::with_keys(google, gemini);
+        let build = Self::with_keys(google, gemini);
         let mut settings: Self = fs::read_to_string(dir.join(FILE_NAME))
             .ok()
             .and_then(|text| serde_json::from_str(&text).ok())
             .unwrap_or_else(|| Self::with_keys(google, gemini));
-        if settings.api_key.is_none() {
-            settings.api_key = initial.api_key;
-        }
-        if settings.gemini_key.is_none() {
-            settings.gemini_key = initial.gemini_key;
-        }
+        settings.build_api_key = build.build_api_key;
+        settings.build_gemini_key = build.build_gemini_key;
 
         settings
     }
@@ -206,8 +217,8 @@ impl Settings {
     /// 選んだサービスの API キー (ML Kit は、キーが要らないので、空の文字列).
     pub fn key_for_provider(&self) -> Option<&str> {
         match self.provider {
-            Provider::Google => usable(&self.api_key),
-            Provider::Gemini => usable(&self.gemini_key),
+            Provider::Google => effective(&self.api_key, &self.build_api_key),
+            Provider::Gemini => effective(&self.gemini_key, &self.build_gemini_key),
             Provider::Mlkit | Provider::Googlefree => Some(""),
         }
     }
@@ -216,8 +227,8 @@ impl Settings {
     pub fn view(&self, mlkit_available: bool) -> View {
         View {
             provider: self.provider,
-            has_google_key: usable(&self.api_key).is_some(),
-            has_gemini_key: usable(&self.gemini_key).is_some(),
+            has_google_key: effective(&self.api_key, &self.build_api_key).is_some(),
+            has_gemini_key: effective(&self.gemini_key, &self.build_gemini_key).is_some(),
             gemini_model: self.gemini_model.clone(),
             free_parallel: clamp_parallel(self.free_parallel),
             mlkit_available,

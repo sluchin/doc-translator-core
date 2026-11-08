@@ -88,27 +88,58 @@ fn keys_are_kept_cleared_or_replaced() {
 }
 
 #[test]
-fn fills_the_keys_not_entered_yet_from_the_build() {
+fn uses_the_build_key_only_when_the_saved_key_is_empty() {
     let dir = temp_dir("build-keys");
-    // ファイルがなければ, ビルドのときのキー
-    let fresh = Settings::load_with_keys(&dir, Some("g"), Some("m"));
-    assert_eq!(fresh.api_key.as_deref(), Some("g"));
-    assert_eq!(fresh.gemini_key.as_deref(), Some("m"));
-    // まだ入れていないキー (null) は, ビルドのときのキー. 入れたキーと, 消したキーは, そのまま
+    // ファイルがなければ, 保存したキーは空. ビルドのときのキーを使う
+    let mut fresh = Settings::load_with_keys(&dir, Some("g"), Some("m"));
+    assert_eq!(fresh.api_key, None);
+    fresh.provider = Provider::Google;
+    assert_eq!(fresh.key_for_provider(), Some("g"));
+    fresh.provider = Provider::Gemini;
+    assert_eq!(fresh.key_for_provider(), Some("m"));
+    let view = fresh.view(false);
+    assert!(view.has_google_key && view.has_gemini_key);
+    // 保存したキーが空でなければ, ビルドのときのキーがあっても, 保存したキー
     fs::create_dir_all(&dir).unwrap();
     fs::write(
         dir.join(FILE_NAME),
         r#"{"provider":"gemini","api_key":null,"gemini_key":"mine","free_parallel":1}"#,
     )
     .unwrap();
-    let saved = Settings::load_with_keys(&dir, Some("g"), Some("m"));
-    assert_eq!(saved.api_key.as_deref(), Some("g"));
-    assert_eq!(saved.gemini_key.as_deref(), Some("mine"));
+    let mut saved = Settings::load_with_keys(&dir, Some("g"), Some("m"));
     assert_eq!(saved.free_parallel, 1);
-    fs::write(dir.join(FILE_NAME), r#"{"api_key":"","gemini_key":null}"#).unwrap();
-    let cleared = Settings::load_with_keys(&dir, Some("g"), None);
-    assert_eq!(cleared.api_key.as_deref(), Some(""));
-    assert_eq!(cleared.gemini_key, None);
+    assert_eq!(saved.key_for_provider(), Some("mine"));
+    saved.provider = Provider::Google;
+    assert_eq!(saved.key_for_provider(), Some("g"));
+    // 画面で消したキー (空) も、空と同じ. ビルドのときのキーを使う. どちらもなければ, 設定が要る
+    fs::write(dir.join(FILE_NAME), r#"{"api_key":"","gemini_key":""}"#).unwrap();
+    let mut cleared = Settings::load_with_keys(&dir, Some("g"), None);
+    cleared.provider = Provider::Google;
+    assert_eq!(cleared.key_for_provider(), Some("g"));
+    cleared.provider = Provider::Gemini;
+    assert_eq!(cleared.key_for_provider(), None);
+    assert!(!cleared.view(false).has_gemini_key);
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn does_not_save_the_build_keys() {
+    let dir = temp_dir("build-keys-not-saved");
+    let mut settings = Settings::load_with_keys(&dir, Some("g"), Some("m"));
+    settings.apply(&update(Provider::Google, None, None, ""));
+    settings.save(&dir).unwrap();
+    let text = fs::read_to_string(dir.join(FILE_NAME)).unwrap();
+    assert!(!text.contains("\"g\"") && !text.contains("\"m\""), "{text}");
+    // ビルドのキーを変えて読み直せば, 新しいキーになる
+    let mut again = Settings::load_with_keys(&dir, Some("g2"), None);
+    again.provider = Provider::Google;
+    assert_eq!(again.key_for_provider(), Some("g2"));
+    // 画面で消しても、(ビルドのキーがあれば) ビルドのキーに戻る
+    let mut typed = Settings::load_with_keys(&dir, Some("g"), None);
+    typed.apply(&update(Provider::Google, Some("mine"), None, ""));
+    assert_eq!(typed.key_for_provider(), Some("mine"));
+    typed.apply(&update(Provider::Google, Some(""), None, ""));
+    assert_eq!(typed.key_for_provider(), Some("g"));
     let _ = fs::remove_dir_all(&dir);
 }
 
@@ -169,13 +200,14 @@ fn picks_the_key_of_the_provider_and_hides_the_keys() {
 }
 
 #[test]
-fn takes_the_initial_keys_from_the_build() {
+fn takes_the_build_keys() {
     let settings = Settings::with_keys(Some(" google "), Some(""));
-    assert_eq!(settings.api_key.as_deref(), Some("google"));
-    assert_eq!(settings.gemini_key, None);
+    assert_eq!(settings.api_key, None);
+    assert_eq!(settings.build_api_key.as_deref(), Some("google"));
+    assert_eq!(settings.build_gemini_key, None);
     assert_eq!(
         Settings::with_keys(None, Some("gemini"))
-            .gemini_key
+            .build_gemini_key
             .as_deref(),
         Some("gemini")
     );
