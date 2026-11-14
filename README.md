@@ -12,13 +12,13 @@
 
 ## 中身
 
-| ディレクトリ                  | 内容                                                                                                                                                                                                                        |
+| ディレクトリ | 内容 |
 | :---------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ts/lib/`                     | HTML の取り出し (`extract`)、段落の分割 (`segments`)、翻訳の組み立て (`translatePage`)、履歴、URL、サニタイズ。テストあり (行と分岐が 100%)。                                                                               |
-| `ts/ui/`                      | React の画面 (`App`、`Doc`、`Drawer` (メニューとしおり)、`SettingsDialog`、`useViewer`、`api`、`App.css`)。                                                                                                                 |
-| `rust/`                       | Tauri の Rust 側 (クレート `doc-translator-core`): ページの取得、翻訳 (Google Cloud Translation、Gemini、無料の Google 翻訳 (非公式)、ML Kit の目印の変換)、キャッシュ、設定。テストは `rust/tests/` にソースと分けて置く。 |
-| `plugins/tauri-plugin-mlkit/` | ML Kit (Android のオンデバイス翻訳) の Tauri プラグイン (Kotlin)。                                                                                                                                                          |
-| `docker/Dockerfile`           | 開発用のイメージ (Node.js、Rust、Android の SDK と NDK)。アプリも、これを使う。                                                                                                                                             |
+| `ts/lib/` | HTML の取り出し (`extract`)、段落の分割 (`segments`)、翻訳の組み立て (`translatePage`)、履歴、URL、サニタイズ。テストあり (行と分岐が 100%)。 |
+| `ts/ui/` | React の画面 (`App`、`Doc`、`Drawer` (メニューとしおり)、`SettingsDialog`、`useViewer`、`api`、`App.css`)。 |
+| `rust/` | Tauri の Rust 側 (クレート `doc-translator-core`): ページの取得、翻訳 (Google Cloud Translation、Gemini、無料の Google 翻訳 (非公式)、ML Kit の目印の変換)、キャッシュ、設定。テストは `rust/tests/` にソースと分けて置く。 |
+| `plugins/tauri-plugin-mlkit/` | ML Kit (Android のオンデバイス翻訳) の Tauri プラグイン (Kotlin)。 |
+| `docker/Dockerfile` | 開発用のイメージ (Node.js、Rust、Android の SDK と NDK)。アプリも、これを使う。 |
 
 ## アプリの作り方
 
@@ -40,10 +40,10 @@ Android のビルドは ML Kit のプラグインを**アプリの直接の依�
 2. 入れたキーが空 (まだ入れていないか、画面で消した) なら、ビルドのときの環境変数のキーを使います (Rust の `option_env!` で、ビルドのときに読みます)。
 3. どちらもなければ、設定の画面でキーを入れる必要があります。
 
-| 環境変数                           | キー                                 |
+| 環境変数 | キー |
 | :--------------------------------- | :----------------------------------- |
 | `GOOGLE_CLOUD_TRANSLATION_API_KEY` | Google Cloud Translation の API キー |
-| `GEMINI_API_KEY`                   | Gemini API のキー                    |
+| `GEMINI_API_KEY` | Gemini API のキー |
 
 ```bash
 GEMINI_API_KEY=... npm run tauri:build
