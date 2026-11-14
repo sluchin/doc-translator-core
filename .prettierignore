@@ -4,3 +4,6 @@ target
 package-lock.json
 .github
 plugins/*/android/build
+
+# Markdown は markdownlint-cli2 で整形する (表の形が Prettier と違うため)
+*.md
