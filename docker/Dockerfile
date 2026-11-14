@@ -31,10 +31,14 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     rm -rf /var/lib/apt/lists/*
 
 # Rust (ツールチェインは読み取り専用. cargo のキャッシュはボリュームの /cargo-home)
+# Rust 1.100.0 (2026-11-09) の LLVM のカバレッジは, 実行した行 (match の腕の先頭など) を 0 回と数え,
+# 100% にならない. テストが足りないのではないので, 1.99.1 に固定する (1.100.0 を直したら, stable に戻す).
+ARG RUST_VERSION=1.99.1
 ENV RUSTUP_HOME=/usr/local/rustup
 ENV CARGO_HOME=/cargo-home
 ENV PATH=/usr/local/cargo/bin:${PATH}
 RUN curl -fsSL https://sh.rustup.rs | CARGO_HOME=/usr/local/cargo sh -s -- -y --profile minimal \
+        --default-toolchain ${RUST_VERSION} \
         -t aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android \
         -c clippy,rustfmt && \
     chmod -R a+rX /usr/local/rustup /usr/local/cargo
