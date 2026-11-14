@@ -63,7 +63,7 @@ export function baseUrlOf(url: string): string {
  *
  * @param base 元のページの URL
  * @param id 部分の id
- * @param anchor 部分の中で移る名前 (なければ, 付けない)
+ * @param anchor 部分の中で移る名前 (なければ付けない)
  * @returns 分けたページの URL
  */
 export function sectionUrl(base: string, id: string, anchor = ""): string {
@@ -84,7 +84,7 @@ function textOf(element: Element): string {
 }
 
 /**
- * `<a name="...">` に, 同じ値の id を付ける (リンクの移り先を, id で探せるように. id がすでにあれば, 付けない).
+ * `<a name="...">` に, 同じ値の id を付ける (リンクの移り先を, id で探せるように. id がすでにあれば付けない).
  *
  * @param container 本文
  */
@@ -132,7 +132,7 @@ function groupNodes(
 }
 
 /**
- * 見出しから, メニューを作る (見出しの階層で, 入れ子にする).
+ * 見出しから, メニューを作る (見出しの階層で入れ子にする).
  *
  * @param container 本文
  * @param levels メニューに出す見出しの CSS セレクタ (上の階層から順に)
@@ -239,7 +239,7 @@ export function splitSections(page: DocPage, source: SectionSource): SectionedPa
 /**
  * 開く URL を, 分けたページの URL にする (リンクの移り先の名前があれば, その名前がある部分).
  *
- * 移り先の名前がない (分からない) ときは, クエリの部分. それもなければ, 最初の部分.
+ * 移り先の名前がない (分からない) ときは, クエリの部分. それもなければ最初の部分.
  *
  * @param sectioned 分けたページ
  * @param url 開く URL (元のページの URL か, 分けたページの URL. フラグメントがあってもよい)
@@ -260,7 +260,7 @@ export function resolveSectionUrl(sectioned: SectionedPage, url: string): string
  *
  * @param sectioned 分けたページ
  * @param url 分けたページの URL ({@link resolveSectionUrl} の結果. フラグメントは, 除く)
- * @returns ページ (部分がなければ, 最初の部分)
+ * @returns ページ (部分がなければ最初の部分)
  */
 export function sectionPage(sectioned: SectionedPage, url: string): DocPage {
   const requested = new URL(url).searchParams.get(SECTION_PARAM);

@@ -34,7 +34,7 @@ export interface SiteSheet {
 
 /** サイトの CSS (サイトの見た目で表示するときに, 取得して入れる). */
 export interface SiteStyles {
-  /** CSS のファイルと `<style>` (ページに書かれた順. この順で, 後のものが勝つ). */
+  /** CSS のファイルと `<style>` (ページに書かれた順. この順で後のものが勝つ). */
   readonly sheets: readonly SiteSheet[];
 }
 
@@ -96,7 +96,7 @@ export function collectStyles(doc: Document, url: string): SiteStyles {
 }
 
 /**
- * CSS を, 条件 (`media`) の中に入れる (条件がないか, `all` なら, そのまま).
+ * CSS を, 条件 (`media`) の中に入れる (条件がないか, `all` ならそのまま).
  *
  * 条件の中には書けない `@charset` は, 取り除く.
  *
@@ -145,7 +145,7 @@ export function cssImports(css: string, base: string): string[] {
 }
 
 /**
- * CSS から `@import` を取り除く (読み込む CSS は, 先に取得して, 前に入れるため).
+ * CSS から `@import` を取り除く (読み込む CSS は, 先に取得して前に入れるため).
  *
  * @param css CSS
  * @returns 取り除いた CSS
@@ -184,7 +184,7 @@ function attributes(node: FrameNode): string {
  * 本文を囲んでいた要素の `body` に, クラスを足す.
  *
  * @param frame 本文を囲んでいた要素
- * @param classes 足すクラス (空白で区切る. なければ, そのまま)
+ * @param classes 足すクラス (空白で区切る. なければそのまま)
  * @returns 足した要素
  */
 export function withBodyClass(frame: readonly FrameNode[], classes = ""): FrameNode[] {
@@ -201,7 +201,7 @@ export function withBodyClass(frame: readonly FrameNode[], classes = ""): FrameN
  * スクリプトの動かない, 切り離したページの中で組み直して, もう一度, 安全な HTML にする.
  *
  * @param html 本文の HTML (安全にしてある)
- * @param rewrite 本文を組み直す関数 (なければ, そのまま)
+ * @param rewrite 本文を組み直す関数 (なければそのまま)
  * @returns 組み直した本文の HTML
  */
 export function rewriteForSiteLook(html: string, rewrite?: (content: Element) => void): string {
@@ -229,7 +229,7 @@ export interface SiteDocument {
 /**
  * サイトの見た目で表示するページ (iframe の `srcdoc`) を作る.
  *
- * `html` と `body` の要素は, クラスを付けて, そのまま使う. ほかの外側の要素は, 本文の外側に,
+ * `html` と `body` の要素は, クラスを付けてそのまま使う. ほかの外側の要素は, 本文の外側に,
  * 外側から順に作り直す. サイトの CSS は, `<style>` に入れる (スクリプトは入れない).
  *
  * @param page 材料

@@ -29,7 +29,7 @@ const MAX_REDIRECTS: usize = 5;
 /// 通信の時間切れ.
 const TIMEOUT: Duration = Duration::from_secs(30);
 
-/// URL が, 取得してよいドキュメントのページか (https で, ホストが一致).
+/// URL が, 取得してよいドキュメントのページか (https でホストが一致).
 pub fn is_doc_url(host: &str, url: &str) -> bool {
     Url::parse(url)
         .map(|parsed| parsed.scheme() == "https" && parsed.host_str() == Some(host))
@@ -99,7 +99,7 @@ pub async fn fetch_page(client: &reqwest::Client, site: Site, url: &str) -> Resu
     fetch_text(client, site, url, Kind::Html).await
 }
 
-/// サイトのテキスト (HTML, JSON, CSS) を取得する (ホストが違えば, 通信しないで失敗する).
+/// サイトのテキスト (HTML, JSON, CSS) を取得する (ホストが違えば通信しないで失敗する).
 pub async fn fetch_text(
     client: &reqwest::Client,
     site: Site,
@@ -112,7 +112,7 @@ pub async fn fetch_text(
     get_text(client, url, kind).await
 }
 
-/// URL のテキストを取得して, 状態, 種類, 大きさを確かめる (ホストは, 呼ぶ前に確かめておく).
+/// URL のテキストを取得して, 状態, 種類, 大きさを確かめる (ホストは呼ぶ前に確かめておく).
 pub async fn get_text(client: &reqwest::Client, url: &str, kind: Kind) -> Result<String, String> {
     let response = client.get(url).send().await.map_err(|e| e.to_string())?;
     check_response(

@@ -99,7 +99,7 @@ impl AppState {
 ///
 /// # Returns
 ///
-/// テキスト. ホストが違うか, 取得できなければ, エラー.
+/// テキスト. ホストが違うか, 取得できなければエラー.
 pub async fn fetch(state: &AppState, url: &str, kind: Kind) -> Result<String, String> {
     log::debug!("Fetching {}", url);
     docs::fetch_text(&state.client, state.site, url, kind)
@@ -136,7 +136,7 @@ fn mlkit_unavailable() -> String {
 pub struct Translated {
     /// 翻訳した文章, またはエラー.
     pub result: Result<Vec<String>, String>,
-    /// キャッシュが変わったか (変わったら, 保存する. 失敗しても, それまでに翻訳できた分は入っている).
+    /// キャッシュが変わったか (変わったら保存する. 失敗しても, それまでに翻訳できた分は入っている).
     pub changed: bool,
 }
 
@@ -249,7 +249,7 @@ async fn translate_with<B: Backend>(
 ///
 /// # Returns
 ///
-/// 書けなければ, エラー.
+/// 書けなければエラー.
 pub fn save_cache(state: &AppState) -> Result<(), String> {
     state.save_pending.store(false, Ordering::Release);
     let snapshot = cache_snapshot(state)?;
@@ -265,13 +265,13 @@ pub fn save_cache(state: &AppState) -> Result<(), String> {
 ///
 /// # Returns
 ///
-/// 書けなければ, エラー.
+/// 書けなければエラー.
 pub fn write_cache(dir: &Path, snapshot: &[(String, String)]) -> Result<(), String> {
     std::fs::write(dir.join(CACHE_FILE), translate::entries_to_json(snapshot))
         .map_err(|e| e.to_string())
 }
 
-/// キャッシュの写しを作る (書き出しと保存は, 写しを使って, ロックの外で行う).
+/// キャッシュの写しを作る (書き出しと保存は, 写しを使ってロックの外で行う).
 ///
 /// # Arguments
 ///
@@ -328,7 +328,7 @@ pub fn read_log(state: &AppState) -> Result<String, String> {
 ///
 /// # Returns
 ///
-/// 消せなければ, エラー.
+/// 消せなければエラー.
 pub fn clear_log(state: &AppState) -> Result<(), String> {
     logging::clear_logs(&logging::log_path(&state.dir), logging::MAX_BACKUPS)
         .map_err(|e| e.to_string())?;
@@ -337,7 +337,7 @@ pub fn clear_log(state: &AppState) -> Result<(), String> {
     Ok(())
 }
 
-/// 書き出すログ (全体. 最大で約 20 MB). 読めなければ, その理由.
+/// 書き出すログ (全体. 最大で約 20 MB). 読めなければその理由.
 ///
 /// # Arguments
 ///

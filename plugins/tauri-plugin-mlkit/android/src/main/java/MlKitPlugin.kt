@@ -45,11 +45,11 @@ class ShareArgs {
 /**
  * ML Kit のオンデバイス翻訳 (英語から日本語). あわせて, ファイルを Google Drive に渡す (`shareToDrive`).
  *
- * 初めて使うときに、翻訳のモデル (約 30 MB) をダウンロードする. 2 回目からは、通信しない.
+ * 初めて使うときに, 翻訳のモデル (約 30 MB) をダウンロードする. 2 回目からは, 通信しない.
  */
 @TauriPlugin
 class MlKitPlugin(
-    // 基底クラスの activity は private なので、ファイルを渡すために、自分でも持つ
+    // 基底クラスの activity は private なので, ファイルを渡すために, 自分でも持つ
     private val activity: Activity,
 ) : Plugin(activity) {
     private val executor = Executors.newSingleThreadExecutor()
@@ -65,7 +65,7 @@ class MlKitPlugin(
         const val DRIVE_PACKAGE = "com.google.android.apps.docs"
     }
 
-    /** 翻訳のクライアント (止まったときは、作り直すので、`var`). */
+    /** 翻訳のクライアント (止まったときは, 作り直すので, `var`). */
     private var translator: Translator? = null
 
     /** 翻訳のクライアントを返す (なければ作る). */
@@ -81,8 +81,8 @@ class MlKitPlugin(
                 ).also { translator = it }
 
     /**
-     * 1 つの文章を翻訳する. 時間切れ (止まったとき) や失敗のときは、クライアントを作り直して、
-     * 元の文章を返す (ほかの文章の翻訳を、止めない).
+     * 1 つの文章を翻訳する. 時間切れ (止まったとき) や失敗のときは, クライアントを作り直して,
+     * 元の文章を返す (ほかの文章の翻訳を, 止めない).
      */
     private fun translateOne(text: String): String =
         try {
@@ -94,7 +94,7 @@ class MlKitPlugin(
             text
         }
 
-    /** 文章を翻訳する (モデルの取得と翻訳は、別のスレッドで待つ). */
+    /** 文章を翻訳する (モデルの取得と翻訳は, 別のスレッドで待つ). */
     @Command
     fun translate(invoke: Invoke) {
         val args = invoke.parseArgs(TranslateArgs::class.java)
@@ -106,7 +106,7 @@ class MlKitPlugin(
                 args.texts.forEach { texts.put(translateOne(it)) }
                 invoke.resolve(JSObject().apply { put("texts", texts) })
             } catch (e: Exception) {
-                // 原因が分かるよう、例外の種類 (ExecutionException の中の原因も) と、メッセージを返す
+                // 原因が分かるよう, 例外の種類 (ExecutionException の中の原因も) と, メッセージを返す
                 val cause = e.cause ?: e
                 Log.e(TAG, "Translation failed", e)
                 invoke.reject("${cause.javaClass.simpleName}: ${cause.message ?: "no message"}")
@@ -115,7 +115,7 @@ class MlKitPlugin(
     }
 
     /**
-     * ファイルを, Google Drive のアプリの「ドライブに保存」の画面に渡す (Drive がなければ, 共有先の一覧を出す).
+     * ファイルを, Google Drive のアプリの「ドライブに保存」の画面に渡す (Drive がなければ共有先の一覧を出す).
      *
      * ファイルは, アプリの `FileProvider` (`<パッケージ>.fileprovider`. キャッシュのディレクトリ) で渡す.
      */

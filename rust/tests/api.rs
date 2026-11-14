@@ -11,7 +11,7 @@ use doc_translator_core::translate::{Backend, GeminiBackend, GoogleBackend};
 use mockito::{Matcher, Server};
 use serde_json::json;
 
-/// テストのサイト. `localhost` の https は, 接続できない (通信しないで, 失敗する).
+/// テストのサイト. `localhost` の https は, 接続できない (通信しないで失敗する).
 const SITE: Site = Site {
     host: "localhost",
     alt_host: None,
@@ -59,7 +59,7 @@ async fn get_text_checks_the_response() {
     let _large = server
         .mock("GET", "/large")
         .with_header("content-type", "text/html")
-        // 大きさを知らせない (読んでから, 確かめる)
+        // 大きさを知らせない (読んでから確かめる)
         .with_chunked_body(|w| w.write_all(&vec![b'a'; MAX_BYTES + 1]))
         .create_async()
         .await;
@@ -92,7 +92,7 @@ async fn fetch_text_fetches_only_the_documentation_host() {
         docs::fetch_page(&client, SITE, "https://example.com/").await,
         Err("Not a documentation page: https://example.com/".to_string())
     );
-    // ホストは合っている (接続できないので, 失敗する)
+    // ホストは合っている (接続できないので失敗する)
     assert!(
         docs::fetch_text(&client, SITE, "https://localhost:1/", Kind::Css)
             .await
@@ -122,7 +122,7 @@ async fn the_client_follows_redirects_only_to_the_documentation_host() {
         .await
         .unwrap_err();
     assert!(out.is_redirect());
-    // たどる (接続できないので, 失敗する)
+    // たどる (接続できないので失敗する)
     let inside = client
         .get(format!("{}/in", server.url()))
         .send()

@@ -23,14 +23,14 @@ import {
 } from "../lib/siteLook";
 import { fetchCss } from "./api";
 
-/** `@import` をたどる深さの上限 (輪になっても, 止まる). */
+/** `@import` をたどる深さの上限 (輪になっても止まる). */
 const MAX_IMPORT_DEPTH = 2;
 
 /** 取得した CSS (URL ごと. アプリを開いている間だけ, 覚えておく). */
 const cssCache = new Map<string, Promise<string>>();
 
 /**
- * サイトの CSS を取得して, `@import` を前に入れて, URL を絶対 URL にする (取得できなければ, 空).
+ * サイトの CSS を取得して, `@import` を前に入れて, URL を絶対 URL にする (取得できなければ空).
  *
  * @param url CSS の URL
  * @param depth `@import` をたどった深さ

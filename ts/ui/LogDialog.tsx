@@ -18,7 +18,7 @@ const LEVELS: readonly { level: LogLevel; label: string }[] = [
 ];
 
 /**
- * ログファイルを読んで, 1 件ずつに分ける.
+ * ログファイルを読んで 1 件ずつに分ける.
  *
  * @returns ログ (古い順) と, 読めなかったときの説明
  */

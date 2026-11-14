@@ -39,7 +39,7 @@ interface Props {
   onClose: () => void;
   /** メニュー (目次). */
   menu: readonly MenuItem[];
-  /** メニュー (目次) があるか (無ければ, 目次のタブを出さない). */
+  /** メニュー (目次) があるか (無ければ目次のタブを出さない). */
   hasMenu: boolean;
   /** 表示を切り替えるボタン (サイト風, 原文, 設定など). */
   actions: readonly DrawerAction[];
@@ -49,9 +49,9 @@ interface Props {
   doc: number;
   /** ドキュメントのタブを選ぶ. */
   onSelectDoc: (index: number) => void;
-  /** 今のページの URL (開いておく項目と、印を付ける項目を決める). */
+  /** 今のページの URL (開いておく項目と, 印を付ける項目を決める). */
   currentUrl: string;
-  /** 表示の言語 (日本語なら、メニューの名前も翻訳する). */
+  /** 表示の言語 (日本語なら, メニューの名前も翻訳する). */
   lang: Lang;
   /** しおり. */
   bookmarks: readonly Bookmark[];
@@ -74,7 +74,7 @@ interface ItemProps {
 }
 
 /**
- * メニューの 1 つの項目 (子があれば、開閉できる. 今のページを含む枝は、開いておく).
+ * メニューの 1 つの項目 (子があれば開閉できる. 今のページを含む枝は, 開いておく).
  *
  * @param props 引数
  * @returns 項目
@@ -129,13 +129,13 @@ function Item({ item, currentUrl, onOpen }: ItemProps) {
 
 /**
  * ナビゲーションドロワー: ドキュメントのメニュー (目次) と, 表示の切り替え (サイト風, 原文, 設定),
- * ドキュメントのタブを、横から出す.
+ * ドキュメントのタブを, 横から出す.
  *
- * ページを進めても、いつでも、☰ のボタンで開ける. 日本語の表示のときは、開いたときに、
- * メニューの名前を翻訳する (翻訳は、キャッシュされる). 項目を押すと、ページを開いて、閉じる.
+ * ページを進めても, いつでも☰ のボタンで開ける. 日本語の表示のときは, 開いたときに,
+ * メニューの名前を翻訳する (翻訳は, キャッシュされる). 項目を押すと, ページを開いて閉じる.
  *
  * @param props 引数
- * @returns 画面 (閉じているときは、何も出さない)
+ * @returns 画面 (閉じているときは, 何も出さない)
  */
 export function Drawer({
   open,
@@ -166,7 +166,7 @@ export function Drawer({
       return;
     }
     let cancelled = false;
-    // 翻訳を始める (外部への通信). 失敗したら、英語の名前のままにする
+    // 翻訳を始める (外部への通信). 失敗したら, 英語の名前のままにする
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setBusy(true);
     translateTitles(missing, translate)

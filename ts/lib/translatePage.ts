@@ -32,13 +32,13 @@ export interface Limits {
 /** 既定の上限 (クラウドの翻訳サービス). */
 export const DEFAULT_LIMITS: Limits = { items: 40, chars: 8000 };
 
-/** Google Cloud Translation の上限 (速く, 断られにくいので, 3 つまで同時に送る). */
+/** Google Cloud Translation の上限 (速く, 断られにくいので 3 つまで同時に送る). */
 export const GOOGLE_LIMITS: Limits = { ...DEFAULT_LIMITS, parallel: 3 };
 
 /** Gemini の上限 (Rust の側でも, 1 つの依頼を分けて同時に送るので, 2 つまで). */
 export const GEMINI_LIMITS: Limits = { ...DEFAULT_LIMITS, parallel: 2 };
 
-/** 端末の中で翻訳する (ML Kit) ときの上限. 小さくして、経過が、こまめに進むようにする. */
+/** 端末の中で翻訳する (ML Kit) ときの上限. 小さくして, 経過が, こまめに進むようにする. */
 export const MLKIT_LIMITS: Limits = { items: 10, chars: 2000 };
 
 /** 1 回の翻訳の依頼に入れる, 文章の数の上限 (既定). */
@@ -107,7 +107,7 @@ export function chunk(texts: string[], limits: Limits = DEFAULT_LIMITS): string[
  * ページを翻訳する.
  *
  * 段落などの単位ごとに, 文中のコードに「翻訳しない」印を付けて翻訳に渡す. 同じ文章は 1 回だけ
- * 渡す. 翻訳の結果で、コードの印やリンクの数が変わったものは, 英語のまま残す.
+ * 渡す. 翻訳の結果で, コードの印やリンクの数が変わったものは, 英語のまま残す.
  *
  * 初めに `lookup` で, 翻訳済みの文章 (キャッシュ) を探して, あれば, 先に `onProgress` と `onPartial` に渡す.
  * 翻訳に渡すのは, 残りの文章だけ (やり直したときは, 続きから翻訳する). 探せなかったときは, 全部を翻訳に渡す.
@@ -165,7 +165,7 @@ export async function translatePage(
     };
   };
 
-  // 翻訳済みの文章を先に差し込む (探せなくても, 翻訳は続ける)
+  // 翻訳済みの文章を先に差し込む (探せなくても翻訳は続ける)
   const cached = await lookup(unique).catch(() => [] as (string | null)[]);
   unique.forEach((text, at) => {
     const hit = cached[at];
@@ -175,7 +175,7 @@ export async function translatePage(
   });
   const pending = unique.filter((text) => !translations.has(text));
   let done = unique.length - pending.length;
-  // 最初の依頼が終わるのを待たずに、経過を出す (翻訳済みの数から. 遅いサービスでも、始まったことが分かる)
+  // 最初の依頼が終わるのを待たずに, 経過を出す (翻訳済みの数から. 遅いサービスでも始まったことが分かる)
   onProgress({ done, total: unique.length });
   if (done > 0 && pending.length > 0) {
     onPartial(apply());

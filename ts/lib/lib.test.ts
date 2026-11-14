@@ -92,7 +92,7 @@ const PAGE = `<!doctype html><html><head><title>Sample Topic — Test Documentat
 <form><input></form>
 </section></div></body></html>`;
 
-/** 翻訳の代わり: 文章に印を付けるだけ (HTML のタグは、そのまま残す). */
+/** 翻訳の代わり: 文章に印を付けるだけ (HTML のタグは, そのまま残す). */
 const fake = async (texts: string[]): Promise<string[]> => texts.map((text) => `JA(${text})`);
 
 describe("docUrl", () => {
@@ -140,7 +140,7 @@ describe("docUrl", () => {
     const tabbed = { ...PROFILE, pathPrefix: "/", tabs };
     expect(isDocUrl(`https://${HOST}/a/x.html`, tabbed)).toBe(true);
     expect(isDocUrl(`https://${HOST}/b/x.html`, tabbed)).toBe(true);
-    // タブのどれにも合わない (ホストの中の、別のドキュメント)
+    // タブのどれにも合わない (ホストの中の, 別のドキュメント)
     expect(isDocUrl(`https://${HOST}/c/x.html`, tabbed)).toBe(false);
     expect(tabIndexOf(`https://${HOST}/a/x.html`, tabs)).toBe(0);
     expect(tabIndexOf(`https://${HOST}/b/x.html`, tabs)).toBe(1);
@@ -259,7 +259,7 @@ describe("version", () => {
     };
     expect(extractPage(html, `https://${HOST}/2.0.0/a.html`, versioned).versions).toHaveLength(2);
     expect(extractPage(html, `https://${HOST}/2.0.0/a.html`, PROFILE).versions).toEqual([]);
-    // 版の一覧を、ページからではなく、別のファイルから作るサイト
+    // 版の一覧を, ページからではなく, 別のファイルから作るサイト
     const listed = {
       ...PROFILE,
       versions: { pattern: PATTERN, list: { url: "https://a/v", parse: () => [] } },
@@ -349,7 +349,7 @@ describe("extractPage redirect and no-translate", () => {
 });
 
 describe("syncScroll", () => {
-  // 原文 (英語) と翻訳 (日本語) で、同じ段落の高さが違う
+  // 原文 (英語) と翻訳 (日本語) で, 同じ段落の高さが違う
   const source = [
     { top: 100, height: 200 },
     { top: 300, height: 100 },
@@ -362,10 +362,10 @@ describe("syncScroll", () => {
   ];
 
   it("keeps the same paragraph at the top of both panes", () => {
-    // 2 つ目の段落の、半分まで
+    // 2 つ目の段落の, 半分まで
     expect(syncedTop(source, translated, 350)).toBe(300);
     expect(syncedTop(translated, source, 300)).toBe(350);
-    // 段落の初め、最後の段落の終わりより下
+    // 段落の初め, 最後の段落の終わりより下
     expect(syncedTop(source, translated, 400)).toBe(450);
     expect(syncedTop(source, translated, 2000)).toBe(650);
   });
@@ -528,16 +528,16 @@ describe("menu", () => {
     expect(items[1].children.map((c) => [c.title, c.url])).toEqual([
       ["1.1. Sub", "https://docs.example.com/book/one-a.html"],
     ]);
-    // 既定 (`ul`) では、`ol` を読まない
+    // 既定 (`ul`) では, `ol` を読まない
     expect(parseHtmlMenu(toc, "https://a/")).toEqual([]);
-    // タブごとの、別のファイルのメニューは、ページからは読まない
+    // タブごとの, 別のファイルのメニューは, ページからは読まない
     expect(
       extractPage(PAGE, "https://a/", {
         ...PROFILE,
         menu: { type: "htmlFile", url: "https://a/toc.html", selector: "ol" },
       }).menu,
     ).toEqual([]);
-    // 一覧の要素の指定は、ページのメニューにも使える
+    // 一覧の要素の指定は, ページのメニューにも使える
     expect(
       extractPage(`<nav><ol><li><a href="x.html">X</a></li></ol></nav>`, "https://a/b/", {
         ...PROFILE,
@@ -659,7 +659,7 @@ describe("translatePage", () => {
     expect(result.html).toContain("int x = 1; // keep");
     expect(result.html).toContain("only_code");
     expect(result.kept).toBe(0);
-    // 最初の依頼が終わる前に、0 から、経過を出す
+    // 最初の依頼が終わる前に, 0 から, 経過を出す
     expect(seen[0]).toBe(0);
     expect(seen.at(-1)).toBe(1);
   });
@@ -760,7 +760,7 @@ describe("translatePage", () => {
       async (texts) => texts.map((text) => `C(${text})`),
     );
     expect(send).not.toHaveBeenCalled();
-    // 全部が翻訳済みなら、全部が終わった経過を、1 回だけ出す
+    // 全部が翻訳済みなら, 全部が終わった経過を, 1 回だけ出す
     expect(progress).toHaveBeenCalledTimes(1);
     expect(progress).toHaveBeenCalledWith({ done: 2, total: 2 });
     expect(result.title).toBe("C(Sample Topic)");

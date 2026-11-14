@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! 翻訳とキャッシュ (`translate.rs`)の単体テスト (本番のソースとは、分けて置く).
+//! 翻訳とキャッシュ (`translate.rs`)の単体テスト (本番のソースとは, 分けて置く).
 
 use std::sync::Mutex;
 
@@ -178,12 +178,12 @@ fn merges_an_exported_cache_without_replacing_the_local_translations() {
     let mut local = Cache::new(10);
     local.insert("a".into(), "local-a".into());
     assert_eq!(local.merge_json(&exported).unwrap(), 1);
-    // 端末にある翻訳は、そのまま. ない翻訳だけを足す
+    // 端末にある翻訳は, そのまま. ない翻訳だけを足す
     assert_eq!(local.get("a").unwrap(), "local-a");
     assert_eq!(local.get("b").unwrap(), "remote-b");
-    // もう一度読み込んでも、増えない
+    // もう一度読み込んでも, 増えない
     assert_eq!(local.merge_json(&exported).unwrap(), 0);
-    // キャッシュでないファイルは、何も変えずに失敗する
+    // キャッシュでないファイルは, 何も変えずに失敗する
     assert!(
         local
             .merge_json("not json")
@@ -269,14 +269,14 @@ fn builds_the_gemini_request() {
             .unwrap()
             .contains("never add, explain, or expand")
     );
-    // 指示文は、特定のサイトの名前を含まない (ほかのアプリも、共通のコードを使う)
+    // 指示文は, 特定のサイトの名前を含まない (ほかのアプリも共通のコードを使う)
     assert!(
         !body["systemInstruction"]["parts"][0]["text"]
             .as_str()
             .unwrap()
             .contains("Zephyr")
     );
-    // 考える機能は、切る (翻訳が速い). 断るモデルのためには、設定なしの本文も作れる
+    // 考える機能は, 切る (翻訳が速い). 断るモデルのためには, 設定なしの本文も作れる
     assert_eq!(
         body["generationConfig"]["thinkingConfig"]["thinkingBudget"],
         0
@@ -321,10 +321,10 @@ fn splits_the_texts_into_small_batches_in_order() {
         split_batches(&all, 2),
         vec![texts(&["a", "b"]), texts(&["c", "d"]), texts(&["e"])]
     );
-    // 0 個ずつは、1 個ずつとして扱う. 空なら、依頼はない
+    // 0 個ずつは, 1 個ずつとして扱う. 空なら, 依頼はない
     assert_eq!(split_batches(&all, 0).len(), 5);
     assert!(split_batches(&[], GEMINI_BATCH).is_empty());
-    // 40 個 (画面が 1 回に渡す数) は、同時に送る数の、1 回分に収まる
+    // 40 個 (画面が 1 回に渡す数) は, 同時に送る数の, 1 回分に収まる
     let forty: Vec<String> = (0..40).map(|i| i.to_string()).collect();
     assert_eq!(split_batches(&forty, GEMINI_BATCH).len(), GEMINI_PARALLEL);
 }
@@ -362,7 +362,7 @@ fn skips_the_blank_texts_and_puts_the_translations_back() {
 #[tokio::test]
 async fn halves_the_batch_when_the_number_does_not_match() {
     let calls = Mutex::new(Vec::new());
-    // 3 個以上は、数が合わない (モデルが、数を間違える). 2 個までは、翻訳できる
+    // 3 個以上は, 数が合わない (モデルが, 数を間違える). 2 個までは, 翻訳できる
     let send = |batch: Vec<String>| {
         calls.lock().unwrap().push(batch.len());
         async move {
@@ -377,19 +377,19 @@ async fn halves_the_batch_when_the_number_does_not_match() {
     let result = translate_halving(all, &send).await.unwrap();
 
     assert_eq!(result, texts(&["JA:a", "JA:b", "JA:c", "JA:d", "JA:e"]));
-    // 5 個で失敗 → 2 個と 3 個 (3 個は、また失敗 → 1 個と 2 個)
+    // 5 個で失敗 → 2 個と 3 個 (3 個は, また失敗 → 1 個と 2 個)
     assert_eq!(*calls.lock().unwrap(), vec![5, 2, 3, 1, 2]);
 }
 
 #[tokio::test]
 async fn keeps_a_single_text_that_never_matches_and_passes_other_errors() {
     let never = |_: Vec<String>| async { Err::<Vec<String>, String>(GEMINI_MISMATCH.to_string()) };
-    // 1 つだけで合わないときは、原文のまま (ページ全体は、失敗にしない)
+    // 1 つだけで合わないときは, 原文のまま (ページ全体は, 失敗にしない)
     assert_eq!(
         translate_halving(texts(&["a", "b"]), &never).await.unwrap(),
         texts(&["a", "b"])
     );
-    // 数の違い以外のエラーは、そのまま返す
+    // 数の違い以外のエラーは, そのまま返す
     let busy = |_: Vec<String>| async { Err::<Vec<String>, String>("busy".to_string()) };
     assert_eq!(
         translate_halving(texts(&["a", "b"]), &busy)
@@ -404,7 +404,7 @@ fn detects_the_model_that_rejects_the_thinking_setting() {
     let message = r#"{"error":{"message":"Thinking budget 0 is invalid for this model"}}"#;
     assert!(rejects_thinking(400, message));
     assert!(rejects_thinking(400, "THINKING_CONFIG is not supported"));
-    // 別の 400 と、400 以外は、考える機能の設定のせいではない
+    // 別の 400 と, 400 以外は, 考える機能の設定のせいではない
     assert!(!rejects_thinking(
         400,
         r#"{"error":{"message":"API key not valid"}}"#

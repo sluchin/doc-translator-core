@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! 無料の Google 翻訳 (`free.rs`)の単体テスト (本番のソースとは、分けて置く).
+//! 無料の Google 翻訳 (`free.rs`)の単体テスト (本番のソースとは, 分けて置く).
 
 use doc_translator_core::free::*;
 use doc_translator_core::plain::PlainTranslator;
@@ -32,7 +32,7 @@ fn rejects_an_unexpected_response() {
 fn explains_the_limit_and_the_block() {
     assert!(free_error(429).contains("limiting the requests (HTTP 429)"));
     assert!(free_error(503).contains("limiting the requests (HTTP 503)"));
-    // 確認の画面へのリダイレクトは、ネットワークを止められたもの
+    // 確認の画面へのリダイレクトは, ネットワークを止められたもの
     assert!(free_error(302).contains("blocked this network for unusual traffic (HTTP 302)"));
     assert!(is_blocked(300) && is_blocked(399));
     assert!(!is_blocked(200) && !is_blocked(400) && !is_blocked(429));

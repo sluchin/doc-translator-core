@@ -43,7 +43,7 @@ function itemFromLi(li: Element, base: string, list: string): MenuItem {
 }
 
 /**
- * 一覧 (`ul` か `ol`) から, 項目の一覧を作る.
+ * 一覧 (`ul` か `ol`) から項目の一覧を作る.
  *
  * @param element 一覧の要素
  * @param base ページの URL
@@ -83,7 +83,7 @@ export function isCurrent(item: MenuItem, url: string): boolean {
 }
 
 /**
- * 項目か、その子孫が、開いているページを指すかを確かめる (開いておく項目を決める).
+ * 項目か, その子孫が, 開いているページを指すかを確かめる (開いておく項目を決める).
  *
  * @param item 項目
  * @param url 開いているページの URL
@@ -94,7 +94,7 @@ export function containsCurrent(item: MenuItem, url: string): boolean {
 }
 
 /**
- * 木の、全ての名前 (重複なし) を集める.
+ * 木の, 全ての名前 (重複なし) を集める.
  *
  * @param items 項目
  * @returns 名前
@@ -111,10 +111,10 @@ export function collectTitles(items: readonly MenuItem[]): string[] {
 }
 
 /**
- * 木の名前を、表で置き換える (表にない名前は、そのまま).
+ * 木の名前を, 表で置き換える (表にない名前は, そのまま).
  *
  * @param items 項目
- * @param titles 元の名前から、置き換える名前への表
+ * @param titles 元の名前から, 置き換える名前への表
  * @returns 名前を置き換えた木
  */
 export function withTitles(
@@ -129,7 +129,7 @@ export function withTitles(
 }
 
 /**
- * 翻訳サービスが返した HTML の断片を、プレーンテキストにする (文字参照を戻す).
+ * 翻訳サービスが返した HTML の断片を, プレーンテキストにする (文字参照を戻す).
  *
  * @param html HTML の断片
  * @returns テキスト
@@ -139,11 +139,11 @@ export function htmlToText(html: string): string {
 }
 
 /**
- * 名前を翻訳する (文章を、1 回の依頼に入る大きさに分けて、順に翻訳する).
+ * 名前を翻訳する (文章を, 1 回の依頼に入る大きさに分けて, 順に翻訳する).
  *
  * @param titles 名前
  * @param translate 翻訳する関数
- * @returns 元の名前から、翻訳した名前への表
+ * @returns 元の名前から, 翻訳した名前への表
  */
 export async function translateTitles(
   titles: readonly string[],

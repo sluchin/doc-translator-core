@@ -2,10 +2,10 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! プレーンテキストしか翻訳できないサービス (ML Kit) のために、HTML の断片を、テキストに直す.
+//! プレーンテキストしか翻訳できないサービス (ML Kit) のために, HTML の断片を, テキストに直す.
 //!
-//! タグは `[[0]]` のような目印に置き換えて翻訳に渡し、翻訳のあとで、目印をタグに戻す.
-//! 「翻訳しない」印のある要素は、中身ごと 1 つの目印にする. 目印が欠けたり増えたりしたときは、
+//! タグは `[[0]]` のような目印に置き換えて翻訳に渡し, 翻訳のあとで目印をタグに戻す.
+//! 「翻訳しない」印のある要素は, 中身ごと 1 つの目印にする. 目印が欠けたり増えたりしたときは,
 //! タグの間の文章を 1 つずつ翻訳する.
 
 use std::future::Future;
@@ -16,7 +16,7 @@ use crate::translate::Backend;
 
 /// プレーンテキストを翻訳するもの (ML Kit).
 pub trait PlainTranslator {
-    /// テキストを翻訳する. 同じ数の翻訳を、同じ順で返す.
+    /// テキストを翻訳する. 同じ数の翻訳を, 同じ順で返す.
     fn translate_plain(
         &self,
         texts: &[String],
@@ -28,15 +28,15 @@ pub trait PlainTranslator {
 pub enum Piece {
     /// 文章 (文字参照を戻したテキスト).
     Text(String),
-    /// そのまま残す HTML (タグ、または「翻訳しない」要素の全体).
+    /// そのまま残す HTML (タグ, または「翻訳しない」要素の全体).
     Raw(String),
 }
 
-/// 字句: タグか、文章.
+/// 字句: タグか, 文章.
 #[derive(Debug)]
 struct Token<'a> {
     raw: &'a str,
-    /// タグなら、その情報.
+    /// タグならその情報.
     tag: Option<Tag>,
 }
 
@@ -69,7 +69,7 @@ fn tag_end(text: &str) -> Option<usize> {
     None
 }
 
-/// 開きのタグの文字列から、情報を読む.
+/// 開きのタグの文字列から, 情報を読む.
 fn parse_tag(raw: &str) -> Tag {
     let inner = raw.trim_start_matches('<').trim_end_matches('>');
     let closing = inner.starts_with('/');
@@ -94,7 +94,7 @@ fn parse_tag(raw: &str) -> Tag {
     }
 }
 
-/// HTML の断片を、タグと文章に分ける.
+/// HTML の断片を, タグと文章に分ける.
 fn tokenize(html: &str) -> Vec<Token<'_>> {
     let mut tokens = Vec::new();
     let mut rest = html;
@@ -110,12 +110,12 @@ fn tokenize(html: &str) -> Vec<Token<'_>> {
                 } else {
                     Some(parse_tag(raw))
                 };
-                // コメントなどは、タグとして扱わず、そのまま残す文章にしない
+                // コメントなどは, タグとして扱わず, そのまま残す文章にしない
                 tokens.push(Token { raw, tag });
                 rest = &rest[length..];
             }
             None => {
-                // 先頭の 1 文字を飛ばす (バイトで 1 つ飛ばすと, 日本語や「’」で始まる文章の, 文字の途中で切って, panic する)
+                // 先頭の 1 文字を飛ばす (バイトで 1 つ飛ばすと, 日本語や「’」で始まる文章の, 文字の途中で切って panic する)
                 let first = rest.chars().next().map_or(1, char::len_utf8);
                 let next = rest[first..].find('<').map_or(rest.len(), |i| i + first);
                 tokens.push(Token {
@@ -130,7 +130,7 @@ fn tokenize(html: &str) -> Vec<Token<'_>> {
     tokens
 }
 
-/// 文字参照を、文字に戻す (よく使うものと、数値).
+/// 文字参照を, 文字に戻す (よく使うものと, 数値).
 pub fn decode(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
@@ -170,14 +170,14 @@ pub fn decode(text: &str) -> String {
     out
 }
 
-/// 文字を、HTML の文章にできるよう、エスケープする.
+/// 文字を, HTML の文章にできるよう, エスケープする.
 pub fn encode(text: &str) -> String {
     text.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
 }
 
-/// 文章に、翻訳する英字があるか.
+/// 文章に, 翻訳する英字があるか.
 fn has_letters(text: &str) -> bool {
     text.chars().any(|c| c.is_ascii_alphabetic())
 }
@@ -206,7 +206,7 @@ fn element_end(tokens: &[Token<'_>], start: usize) -> Option<usize> {
     None
 }
 
-/// 断片を、部品に分ける.
+/// 断片を, 部品に分ける.
 pub fn pieces(html: &str) -> Vec<Piece> {
     let tokens = tokenize(html);
     let mut out = Vec::new();
@@ -234,13 +234,13 @@ pub fn pieces(html: &str) -> Vec<Piece> {
     out
 }
 
-/// ML Kit に 1 回で渡す文章の長さの上限 (文字数). 長い文章は、遅くなる (止まったように見える) ので、
-/// 文の切れ目で分けて、順に翻訳する.
+/// ML Kit に 1 回で渡す文章の長さの上限 (文字数). 長い文章は, 遅くなる (止まったように見える) ので,
+/// 文の切れ目で分けて順に翻訳する.
 const MAX_CHUNK: usize = 400;
 
-/// 文章を、文の切れ目 (`.` `!` `?` `。` の後の空白) で、上限の長さ以下のまとまりに分ける.
+/// 文章を, 文の切れ目 (`.` `!` `?` `。` の後の空白) で, 上限の長さ以下のまとまりに分ける.
 ///
-/// 1 つの文が、上限より長いときは、単語の切れ目で分ける. 前後の空白は、取り除く.
+/// 1 つの文が, 上限より長いときは, 単語の切れ目で分ける. 前後の空白は, 取り除く.
 pub fn split_sentences(text: &str, max: usize) -> Vec<String> {
     let mut sentences: Vec<&str> = Vec::new();
     let mut start = 0;
@@ -272,7 +272,7 @@ pub fn split_sentences(text: &str, max: usize) -> Vec<String> {
         .collect()
 }
 
-/// 上限より長いまとまりを、単語の切れ目で分ける (空白がなければ、そのまま).
+/// 上限より長いまとまりを, 単語の切れ目で分ける (空白がなければそのまま).
 fn split_words(text: &str, max: usize) -> Vec<String> {
     let mut parts: Vec<String> = Vec::new();
     for word in text.split(' ') {
@@ -288,12 +288,12 @@ fn split_words(text: &str, max: usize) -> Vec<String> {
     parts
 }
 
-/// 目印の正規表現 (ブラケットは、全角や隅付きに変わることがある).
+/// 目印の正規表現 (ブラケットは, 全角や隅付きに変わることがある).
 fn marker() -> Regex {
     Regex::new(r"[\[［【]{2}\s*(\d+)\s*[\]］】]{2}").expect("the pattern is valid")
 }
 
-/// 部品を、目印つきのテキストにする (Raw は、順に `[[0]]` `[[1]]`...).
+/// 部品を, 目印つきのテキストにする (Raw は, 順に `[[0]]` `[[1]]`...).
 pub fn to_template(parts: &[Piece]) -> String {
     let mut count = 0;
     parts
@@ -308,7 +308,7 @@ pub fn to_template(parts: &[Piece]) -> String {
         .collect()
 }
 
-/// 翻訳されたテキストの目印を、元の HTML に戻す. 目印が過不足なく 1 回ずつあるときだけ Some.
+/// 翻訳されたテキストの目印を, 元の HTML に戻す. 目印が過不足なく 1 回ずつあるときだけ Some.
 pub fn restore(translated: &str, parts: &[Piece]) -> Option<String> {
     let raws: Vec<&String> = parts
         .iter()
@@ -340,7 +340,7 @@ pub fn restore(translated: &str, parts: &[Piece]) -> Option<String> {
     seen.iter().all(|&flag| flag).then_some(out)
 }
 
-/// 部品の文章を 1 つずつ翻訳した結果から、HTML を組み立てる.
+/// 部品の文章を 1 つずつ翻訳した結果から, HTML を組み立てる.
 fn assemble(parts: &[Piece], translated: &mut impl Iterator<Item = String>) -> String {
     parts
         .iter()
@@ -348,7 +348,7 @@ fn assemble(parts: &[Piece], translated: &mut impl Iterator<Item = String>) -> S
             Piece::Raw(raw) => raw.clone(),
             Piece::Text(text) if has_letters(text) => {
                 let result = translated.next().unwrap_or_else(|| text.clone());
-                // 前後の空白は、タグとの間の区切りなので、残す
+                // 前後の空白は, タグとの間の区切りなので, 残す
                 let lead = &text[..text.len() - text.trim_start().len()];
                 let trail = &text[text.trim_end().len()..];
                 format!("{lead}{}{trail}", encode(result.trim()))
@@ -358,9 +358,9 @@ fn assemble(parts: &[Piece], translated: &mut impl Iterator<Item = String>) -> S
         .collect()
 }
 
-/// ML Kit のように、プレーンテキストを翻訳するものを、`Backend` にする.
+/// ML Kit のように, プレーンテキストを翻訳するものを, `Backend` にする.
 pub struct PlainBackend<P: PlainTranslator> {
-    /// 中身のプレーンテキストの翻訳 (テストが、呼び出しを調べる).
+    /// 中身のプレーンテキストの翻訳 (テストが, 呼び出しを調べる).
     pub plain: P,
 }
 
@@ -370,7 +370,7 @@ impl<P: PlainTranslator> PlainBackend<P> {
         Self { plain }
     }
 
-    /// 長い文章を、文の切れ目で分けて、まとめて翻訳して、つなぎ直す (前後の空白は、残す).
+    /// 長い文章を文の切れ目で分けて, まとめて翻訳してから, つなぎ直す (前後の空白は残す).
     async fn translate_split(&self, texts: &[String]) -> Result<Vec<String>, String> {
         let split: Vec<Vec<String>> = texts
             .iter()
@@ -411,7 +411,7 @@ impl<P: PlainTranslator + Sync> Backend for PlainBackend<P> {
         let parts: Vec<Vec<Piece>> = texts.iter().map(|text| pieces(text)).collect();
 
         async move {
-            // 1 回目: 目印つきのテキストを、まとめて翻訳する
+            // 1 回目: 目印つきのテキストを, まとめて翻訳する
             let targets: Vec<usize> = (0..parts.len())
                 .filter(|&i| {
                     parts[i]
@@ -429,7 +429,7 @@ impl<P: PlainTranslator + Sync> Backend for PlainBackend<P> {
                     None => retry.push(i),
                 }
             }
-            // 2 回目: 目印が崩れたものは、タグの間の文章を 1 つずつ翻訳する
+            // 2 回目: 目印が崩れたものは, タグの間の文章を 1 つずつ翻訳する
             let singles: Vec<String> = retry
                 .iter()
                 .flat_map(|&i| parts[i].iter())

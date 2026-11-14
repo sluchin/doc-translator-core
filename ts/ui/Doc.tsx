@@ -16,15 +16,15 @@ interface Props {
   site: SiteProfile;
   /** 今のページの URL. */
   url: string;
-  /** 表示している本文のページの URL (取得が終わるまでは、前のページ). */
+  /** 表示している本文のページの URL (取得が終わるまでは, 前のページ). */
   docUrl: string;
-  /** 開いたときに戻す、読んだ位置 (0 から 1). */
+  /** 開いたときに戻す, 読んだ位置 (0 から 1). */
   restore?: number;
-  /** スクロールしたとき (と、本文の長さが変わったとき) に、スクロールの状態を知らせる. */
+  /** スクロールしたとき (と, 本文の長さが変わったとき) に, スクロールの状態を知らせる. */
   onScroll: (metrics: Metrics) => void;
   /** 表示する本文の HTML (安全にしてある). */
   html: string;
-  /** 表示してから、移動するフラグメントの名前. */
+  /** 表示してから, 移動するフラグメントの名前. */
   anchor: string;
   /** ドキュメントのリンクを開く. */
   onOpen: (url: string) => void;
@@ -46,7 +46,7 @@ function reveal(target: Element): void {
 }
 
 /**
- * 本文を表示する. リンクのクリックを受けて、ドキュメントの中はアプリで開き、外はブラウザで開く.
+ * 本文を表示する. リンクのクリックを受けて, ドキュメントの中はアプリで開き, 外はブラウザで開く.
  *
  * @param props 引数
  * @returns 本文
@@ -77,13 +77,13 @@ export function Doc({ site, url, docUrl, restore, onScroll, html, anchor, onOpen
       reveal(target);
       target.scrollIntoView();
     } else {
-      // 別のページなら、覚えていた位置へ. 同じページの翻訳や原文への切り替えなら、読んでいた位置のまま
+      // 別のページなら覚えていた位置へ. 同じページの翻訳や原文への切り替えなら, 読んでいた位置のまま
       const at = shown.current === docUrl ? ratio.current : (restore ?? 0);
       box.scrollTo({ top: scrollTopFor(at, box.scrollHeight, box.clientHeight) });
     }
     shown.current = docUrl;
     ratio.current = scrollRatio(box.scrollTop, box.scrollHeight, box.clientHeight);
-    // restore は、ページを開いたときに決まる値. 変わっても、スクロールし直さない
+    // restore は, ページを開いたときに決まる値. 変わっても, スクロールし直さない
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docUrl, html, anchor]);
 
@@ -113,7 +113,7 @@ export function Doc({ site, url, docUrl, restore, onScroll, html, anchor, onOpen
     };
     scrolled();
     box.addEventListener("scroll", scrolled, { passive: true });
-    // 翻訳や画像で本文の長さが変わったときも、全体の長さを数え直す
+    // 翻訳や画像で本文の長さが変わったときも, 全体の長さを数え直す
     const observer = new ResizeObserver(scrolled);
     observer.observe(box);
     if (ref.current) {

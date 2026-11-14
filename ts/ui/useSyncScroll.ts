@@ -8,7 +8,7 @@ import { type RefObject, useEffect } from "react";
 import { scrollRatio, scrollTopFor } from "../lib/progress";
 import { type Block, syncedTop } from "../lib/syncScroll";
 
-/** 位置を合わせるブロック (原文と翻訳で, 数と順番が同じ要素). */
+/** 位置を合わせるブロック (原文と翻訳で数と順番が同じ要素). */
 const BLOCKS = "h1, h2, h3, h4, h5, h6, p, li, pre, table, dt, dd, blockquote, figure";
 
 /**
@@ -31,7 +31,7 @@ export function blocksOf(box: HTMLElement): Block[] {
  * @param left 左の本文 (原文) のスクロールする要素
  * @param right 右の本文 (翻訳) のスクロールする要素
  * @param enabled 連動させるか (並べて表示しているとき)
- * @param html 右の本文の HTML (変わったら, 合わせ直す)
+ * @param html 右の本文の HTML (変わったら合わせ直す)
  */
 export function useSyncScroll(
   left: RefObject<HTMLElement | null>,
@@ -45,7 +45,7 @@ export function useSyncScroll(
     if (!enabled || !a || !b) {
       return;
     }
-    // 合わせるために動かした側の、次のスクロールの知らせは、無視する (合わせ返して、揺れないように)
+    // 合わせるために動かした側の, 次のスクロールの知らせは, 無視する (合わせ返して揺れないように)
     let skip: HTMLElement | undefined;
     let frame = 0;
     const align = (from: HTMLElement, to: HTMLElement) => {
@@ -74,7 +74,7 @@ export function useSyncScroll(
     const onRight = follow(b, a);
     a.addEventListener("scroll", onLeft, { passive: true });
     b.addEventListener("scroll", onRight, { passive: true });
-    // 並べたときと、本文が変わったときは、原文を、翻訳の位置に合わせる
+    // 並べたときと, 本文が変わったときは, 原文を, 翻訳の位置に合わせる
     frame = requestAnimationFrame(() => align(b, a));
     return () => {
       cancelAnimationFrame(frame);

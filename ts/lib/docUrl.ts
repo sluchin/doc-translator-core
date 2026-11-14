@@ -40,8 +40,8 @@ export function isDocUrl(
  * パスから, 版を除く (版のあるサイトで, タブのパスの先頭と比べるため. 例: `/1.90.0/book/a.html` → `/book/a.html`).
  *
  * @param path URL のパス
- * @param pattern パスの中の版に合わせる正規表現 (1 つ目のグループが版. なければ, そのまま)
- * @returns 版を除いたパス (版が見つからなければ, そのまま)
+ * @param pattern パスの中の版に合わせる正規表現 (1 つ目のグループが版. なければそのまま)
+ * @returns 版を除いたパス (版が見つからなければそのまま)
  */
 export function pathWithoutVersion(path: string, pattern?: RegExp): string {
   const match = pattern?.exec(path);
@@ -103,7 +103,7 @@ export function switchedUrl(url: string, site: Pick<SiteProfile, "host" | "alt">
 }
 
 /**
- * URL を絶対 URL にする (読めなければ, そのまま).
+ * URL を絶対 URL にする (読めなければそのまま).
  *
  * @param value 相対 URL か絶対 URL
  * @param base ページの URL

@@ -2,14 +2,14 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! プレーンテキストの翻訳 (`plain.rs`)の単体テスト (本番のソースとは、分けて置く).
+//! プレーンテキストの翻訳 (`plain.rs`)の単体テスト (本番のソースとは, 分けて置く).
 
 use std::sync::Mutex;
 
 use doc_translator_core::plain::*;
 use doc_translator_core::translate::Backend;
 
-/// 偽の ML Kit: 設定した関数で変換して、渡されたテキストを記録する.
+/// 偽の ML Kit: 設定した関数で変換して, 渡されたテキストを記録する.
 struct Fake {
     calls: Mutex<Vec<Vec<String>>>,
     convert: fn(&str) -> String,

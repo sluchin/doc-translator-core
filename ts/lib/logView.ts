@@ -48,7 +48,7 @@ export function parseLog(text: string): LogEntry[] {
     if (last) {
       last.message += `\n${line}`;
     } else if (line !== "") {
-      // ファイルの最初が, 前の件の続きのとき (読む量の上限で, 切れたとき)
+      // ファイルの最初が, 前の件の続きのとき (読む量の上限で切れたとき)
       entries.push({ time: "", level: "info", target: "", message: line });
     }
   }
@@ -60,7 +60,7 @@ export function parseLog(text: string): LogEntry[] {
 }
 
 /**
- * 重大度で, ログを絞り込む.
+ * 重大度でログを絞り込む.
  *
  * @param entries ログ
  * @param minimum 出す, 最も低い重大度
@@ -75,7 +75,7 @@ export function filterLog(entries: readonly LogEntry[], minimum: LogLevel): LogE
  * ログの日時 (UTC) を, 端末の時刻の `YYYY-MM-DD HH:mm:ss.SSS` にする.
  *
  * @param time ログの日時
- * @returns 端末の時刻 (日時でなければ, そのまま)
+ * @returns 端末の時刻 (日時でなければそのまま)
  */
 export function localTime(time: string): string {
   const date = new Date(time);

@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! ページの取得 (`docs.rs`)の単体テスト (本番のソースとは、分けて置く).
+//! ページの取得 (`docs.rs`)の単体テスト (本番のソースとは, 分けて置く).
 
 use doc_translator_core::docs::*;
 

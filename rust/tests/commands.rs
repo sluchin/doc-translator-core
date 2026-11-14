@@ -17,7 +17,7 @@ use mockito::{Server, ServerGuard};
 use serde_json::json;
 use tempfile::{TempDir, tempdir};
 
-/// テストのサイト. `localhost` の https は, 接続できない (通信しないで, 失敗する).
+/// テストのサイト. `localhost` の https は, 接続できない (通信しないで失敗する).
 const SITE: Site = Site {
     host: "localhost",
     alt_host: None,

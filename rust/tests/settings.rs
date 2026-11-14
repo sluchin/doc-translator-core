@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! 設定 (`settings.rs`)の単体テスト (本番のソースとは、分けて置く).
+//! 設定 (`settings.rs`)の単体テスト (本番のソースとは, 分けて置く).
 
 use std::fs;
 
@@ -32,7 +32,7 @@ fn sets_the_parallel_requests_of_the_free_service() {
         settings.free_parallel,
         doc_translator_core::free::DEFAULT_PARALLEL
     );
-    // None なら変えない. 範囲の外は、1 から上限までに収める
+    // None なら変えない. 範囲の外は, 1 から上限までに収める
     let mut change = update(Provider::Googlefree, None, None, "");
     settings.apply(&change);
     assert_eq!(
@@ -45,7 +45,7 @@ fn sets_the_parallel_requests_of_the_free_service() {
     change.free_parallel = Some(0);
     settings.apply(&change);
     assert_eq!(settings.free_parallel, 1);
-    // 設定のファイルに、範囲の外の値が書かれていても、画面には、収めた値を返す
+    // 設定のファイルに, 範囲の外の値が書かれていても, 画面には, 収めた値を返す
     settings.free_parallel = 100;
     assert_eq!(
         settings.view(false).free_parallel,
@@ -90,7 +90,7 @@ fn keys_are_kept_cleared_or_replaced() {
 #[test]
 fn uses_the_build_key_only_when_the_saved_key_is_empty() {
     let dir = temp_dir("build-keys");
-    // ファイルがなければ, 保存したキーは空. ビルドのときのキーを使う
+    // ファイルがなければ保存したキーは空. ビルドのときのキーを使う
     let mut fresh = Settings::load_with_keys(&dir, Some("g"), Some("m"));
     assert_eq!(fresh.api_key, None);
     fresh.provider = Provider::Google;
@@ -111,7 +111,7 @@ fn uses_the_build_key_only_when_the_saved_key_is_empty() {
     assert_eq!(saved.key_for_provider(), Some("mine"));
     saved.provider = Provider::Google;
     assert_eq!(saved.key_for_provider(), Some("g"));
-    // 画面で消したキー (空) も、空と同じ. ビルドのときのキーを使う. どちらもなければ, 設定が要る
+    // 画面で消したキー (空) も空と同じ. ビルドのときのキーを使う. どちらもなければ, 設定が要る
     fs::write(dir.join(FILE_NAME), r#"{"api_key":"","gemini_key":""}"#).unwrap();
     let mut cleared = Settings::load_with_keys(&dir, Some("g"), None);
     cleared.provider = Provider::Google;
@@ -134,7 +134,7 @@ fn does_not_save_the_build_keys() {
     let mut again = Settings::load_with_keys(&dir, Some("g2"), None);
     again.provider = Provider::Google;
     assert_eq!(again.key_for_provider(), Some("g2"));
-    // 画面で消しても、(ビルドのキーがあれば) ビルドのキーに戻る
+    // 画面で消しても, (ビルドのキーがあれば) ビルドのキーに戻る
     let mut typed = Settings::load_with_keys(&dir, Some("g"), None);
     typed.apply(&update(Provider::Google, Some("mine"), None, ""));
     assert_eq!(typed.key_for_provider(), Some("mine"));
@@ -180,7 +180,7 @@ fn picks_the_key_of_the_provider_and_hides_the_keys() {
     assert_eq!(Provider::Gemini.name(), "gemini");
     assert_eq!(Provider::Mlkit.name(), "mlkit");
     assert_eq!(Provider::Googlefree.name(), "googlefree");
-    // Gemini は、モデルが違えば、キャッシュの名前も違う. ほかは、モデルを見ない
+    // Gemini は, モデルが違えば, キャッシュの名前も違う. ほかは, モデルを見ない
     assert_eq!(Provider::Gemini.namespace("m1"), "gemini:m1");
     assert_ne!(
         Provider::Gemini.namespace("m1"),

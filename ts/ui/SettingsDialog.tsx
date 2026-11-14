@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import * as api from "./api";
 import { LogDialog } from "./LogDialog";
 
-/** 無料の Google 翻訳に、同時に送る依頼の数の選択肢 (Rust の `free::MAX_PARALLEL` までの数). */
+/** 無料の Google 翻訳に, 同時に送る依頼の数の選択肢 (Rust の `free::MAX_PARALLEL` までの数). */
 const PARALLEL_CHOICES = [1, 2, 3, 4, 5, 6, 7, 8];
 
 /** 設定の画面の引数. */
@@ -20,7 +20,7 @@ interface Props {
 }
 
 /**
- * 翻訳サービス (無料の Google 翻訳, Google Cloud Translation, Gemini, ML Kit) と、API キーを設定する画面.
+ * 翻訳サービス (無料の Google 翻訳, Google Cloud Translation, Gemini, ML Kit) と, API キーを設定する画面.
  *
  * @param props 引数
  * @returns 画面
@@ -71,7 +71,7 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
   const [cacheMessage, setCacheMessage] = useState<string>();
   const [moving, setMoving] = useState(false);
 
-  /** キャッシュを書き出す、または、読み込む (画面を開いている間は、ボタンを押せない). */
+  /** キャッシュを書き出す, または, 読み込む (画面を開いている間は, ボタンを押せない). */
   const moveCache = async (kind: "export" | "import") => {
     setMoving(true);
     setCacheMessage(undefined);
@@ -89,7 +89,7 @@ export function SettingsDialog({ onClose, onSaved }: Props) {
         const added = await api.importCache();
         setCacheMessage(added === null ? undefined : `読み込みました (新しい翻訳 ${added} 件)。`);
         if (added !== null && added > 0) {
-          // 開いているページに、読み込んだ翻訳を使う
+          // 開いているページに, 読み込んだ翻訳を使う
           onSaved();
         }
       }

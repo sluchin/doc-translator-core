@@ -26,11 +26,11 @@ interface Props {
 }
 
 /**
- * 本文の右に出す、スクロールバー. つまみを押している間 (動かしている間) は、
- * 「3 / 12 画面 (25%)」のように、読み進めた場所と、全体を、つまみの横に出す.
+ * 本文の右に出す, スクロールバー. つまみを押している間 (動かしている間) は,
+ * 「3 / 12 画面 (25%)」のように, 読み進めた場所と, 全体を, つまみの横に出す.
  *
  * @param props 引数
- * @returns スクロールバー (スクロールできないときは、何も出さない)
+ * @returns スクロールバー (スクロールできないときは, 何も出さない)
  */
 export function ScrollBar({ box, metrics, position, ratio }: Props) {
   const [pressed, setPressed] = useState(false);

@@ -16,7 +16,7 @@ export interface Bookmark {
 export interface Saved {
   /** 最後に開いていたページの URL. */
   readonly last?: string;
-  /** ページごとの、読んだ位置 (本文の長さに対する 0 から 1 の割合. 翻訳で長さが変わっても、ずれにくい). */
+  /** ページごとの, 読んだ位置 (本文の長さに対する 0 から 1 の割合. 翻訳で長さが変わっても, ずれにくい). */
   readonly scroll: Readonly<Record<string, number>>;
   /** しおり (付けた順). */
   readonly bookmarks: readonly Bookmark[];
@@ -25,10 +25,10 @@ export interface Saved {
 /** 何も覚えていない状態. */
 export const EMPTY_SAVED: Saved = { scroll: {}, bookmarks: [] };
 
-/** 位置を覚えておくページの数 (多いものから、古い順に捨てる). */
+/** 位置を覚えておくページの数 (多いものから古い順に捨てる). */
 export const MAX_SCROLL = 200;
 
-/** `localStorage` のうち、使う部分. */
+/** `localStorage` のうち, 使う部分. */
 export interface KeyValue {
   /** 値を読む. */
   getItem: (key: string) => string | null;
@@ -37,7 +37,7 @@ export interface KeyValue {
 }
 
 /**
- * 値を、キーと値の組 (オブジェクト) として読む (オブジェクトでなければ、空).
+ * 値を, キーと値の組 (オブジェクト) として読む (オブジェクトでなければ, 空).
  *
  * @param value 値
  * @returns キーと値の組
@@ -47,7 +47,7 @@ function record(value: unknown): Record<string, unknown> {
 }
 
 /**
- * 保存した文字列から、覚えていることを読む (壊れた値や、足りない項目は、空として読む).
+ * 保存した文字列から, 覚えていることを読む (壊れた値や, 足りない項目は, 空として読む).
  *
  * @param text 保存した JSON (なければ null)
  * @returns 覚えていること
@@ -74,7 +74,7 @@ export function parseSaved(text: string | null): Saved {
 }
 
 /**
- * 端末から、覚えていることを読む (使えない端末や、読めないときは、空).
+ * 端末から, 覚えていることを読む (使えない端末や, 読めないときは, 空).
  *
  * @param store 保存先 (使えなければ undefined)
  * @param key キー
@@ -89,7 +89,7 @@ export function loadSaved(store: KeyValue | undefined, key: string): Saved {
 }
 
 /**
- * 端末に、覚えていることを書く (書けなくても、何もしない).
+ * 端末に, 覚えていることを書く (書けなくても何もしない).
  *
  * @param store 保存先 (使えなければ undefined)
  * @param key キー
@@ -99,7 +99,7 @@ export function storeSaved(store: KeyValue | undefined, key: string, saved: Save
   try {
     store?.setItem(key, JSON.stringify(saved));
   } catch {
-    // 容量がない, 書き込みが禁止されているときは、覚えられないだけ
+    // 容量がない, 書き込みが禁止されているときは, 覚えられないだけ
   }
 }
 
@@ -115,7 +115,7 @@ export function withLast(saved: Saved, url: string): Saved {
 }
 
 /**
- * ページの読んだ位置を変えた状態を返す (古いページの位置は、多すぎれば捨てる).
+ * ページの読んだ位置を変えた状態を返す (古いページの位置は, 多すぎれば捨てる).
  *
  * @param saved 覚えていること
  * @param url ページの URL

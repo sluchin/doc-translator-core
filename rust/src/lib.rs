@@ -30,7 +30,7 @@ use settings::{Update, View};
 /// キャッシュを保存するまで待つ時間 (続けて翻訳したときは, まとめて 1 回だけ書く).
 const SAVE_DELAY: std::time::Duration = std::time::Duration::from_secs(2);
 
-/// ML Kit (Android のプラグイン) を、プレーンテキストの翻訳として使う.
+/// ML Kit (Android のプラグイン) を, プレーンテキストの翻訳として使う.
 struct MlKit {
     app: tauri::AppHandle,
 }
@@ -74,7 +74,7 @@ async fn fetch_json(state: State<'_, AppState>, url: String) -> Result<String, S
     commands::fetch(&state, &url, docs::Kind::Json).await
 }
 
-/// サイトの CSS を取得する (サイトの見た目で表示するため. ホストが違えば, 通信しないで失敗する).
+/// サイトの CSS を取得する (サイトの見た目で表示するため. ホストが違えば通信しないで失敗する).
 #[cfg(not(tarpaulin_include))]
 #[tauri::command]
 async fn fetch_css(state: State<'_, AppState>, url: String) -> Result<String, String> {
@@ -161,9 +161,9 @@ fn stamped_name(host: &str, kind: &str, stamp: &str, extension: &str) -> String 
 enum Exported {
     /// 保存の画面で, 保存した (PC).
     Saved,
-    /// Google Drive のアプリ (なければ, 共有先の一覧) に渡した. 保存は, 利用者が Drive の画面で行う (Android).
+    /// Google Drive のアプリ (なければ共有先の一覧) に渡した. 保存は, 利用者が Drive の画面で行う (Android).
     Shared,
-    /// 保存の画面で, やめた.
+    /// 保存の画面でやめた.
     Cancelled,
 }
 
@@ -191,7 +191,7 @@ async fn export_cache(
 
 /// 文章をファイルに書き出す (Android は Google Drive のアプリに渡す. PC は保存の画面を開く).
 ///
-/// `content` は, 書き出す文章を作る関数 (大きいので, 別のスレッドで作る).
+/// `content` は, 書き出す文章を作る関数 (大きいので別のスレッドで作る).
 #[cfg(not(tarpaulin_include))]
 async fn export_text(
     app: &tauri::AppHandle,
@@ -313,7 +313,7 @@ fn lookup_cache(
     commands::lookup_cache(&state, &texts, scope.as_deref())
 }
 
-/// 設定を返す (API キーそのものは、画面に返さない).
+/// 設定を返す (API キーそのものは, 画面に返さない).
 #[cfg(not(tarpaulin_include))]
 #[tauri::command]
 fn get_settings(state: State<'_, AppState>) -> Result<View, String> {
@@ -327,11 +327,11 @@ fn set_settings(state: State<'_, AppState>, update: Update) -> Result<View, Stri
     commands::set_settings(&state, &update, MLKIT_AVAILABLE)
 }
 
-/// アプリの Tauri ビルダーを作る (コマンドと状態は、設定済み).
+/// アプリの Tauri ビルダーを作る (コマンドと状態は, 設定済み).
 ///
-/// ML Kit のプラグイン (`tauri_plugin_mlkit::init()`) は、Android のビルドが、アプリの直接の依存から
-/// 見つけるので、アプリ側で `.plugin(...)` に足す. ダイアログとファイルのプラグインも、アプリの `Cargo.toml` の
-/// 直接の依存に入れる (Android のプロジェクトに、プラグインを含めるため).
+/// ML Kit のプラグイン (`tauri_plugin_mlkit::init()`) は, Android のビルドが, アプリの直接の依存から
+/// 見つけるので, アプリ側で `.plugin(...)` に足す. ダイアログとファイルのプラグインも, アプリの `Cargo.toml` の
+/// 直接の依存に入れる (Android のプロジェクトに, プラグインを含めるため).
 #[cfg(not(tarpaulin_include))]
 pub fn builder(site: Site) -> tauri::Builder<tauri::Wry> {
     tauri::Builder::default()

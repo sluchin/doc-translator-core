@@ -1,6 +1,6 @@
 # doc-translator-core
 
-ドキュメントのサイトを**リンクを開いたときに** 取得して、日本語に翻訳して表示する Tauri アプリ (PC と Android) の、**共通のコード**です。アプリごとに、このリポジトリをサブモジュール (`shared/`) として置きます。
+ドキュメントのサイトを**リンクを開いたときに** 取得して、日本語に翻訳して表示する Tauri アプリ (PC と Android) の**共通のコード**です。アプリごとに、このリポジトリをサブモジュール (`shared/`) として置きます。
 
 - [zephyr-doc-trans](https://github.com/sluchin/zephyr-doc-trans): Zephyr のドキュメント
 - [kotlin-doc-trans](https://github.com/sluchin/kotlin-doc-trans): Kotlin のドキュメント
@@ -30,15 +30,15 @@
 4. `src-tauri/`: `Cargo.toml` に `doc-translator-core` と `tauri-plugin-mlkit` を `../shared/...` のパスで書く。`lib.rs` で `doc_translator_core::builder(Site { host, alt_host, user_agent })` に `tauri_plugin_mlkit::init()` を足して、`run(generate_context!())` する。
 5. `tauri.conf.json`: 名前、識別子、CSP (画像はサイトのホストだけ許す)。
 
-ML Kit のプラグインは Android のビルドが**アプリの直接の依存**から見つけるので、アプリの `Cargo.toml` にも、書きます。
+Android のビルドは ML Kit のプラグインを**アプリの直接の依存**から見つけるので、アプリの `Cargo.toml` にもプラグインを書きます。
 
 ## API キー (設定と、ビルドのときの環境変数)
 
 実際に使うキーは、次の順で決めます (`rust/src/settings.rs` の `Settings::key_for_provider`)。
 
-1. 設定の画面で入れたキーが空でなければ、それを使います (ビルドのときのキーがあっても、入れたキーが優先です)。
-2. 空 (まだ入れていない、画面で消した) なら、ビルドのときの環境変数のキーを使います (Rust の `option_env!` で、ビルドのときに読みます)。
-3. どちらもなければ、設定の画面で、キーを入れる必要があります。
+1. 設定の画面で入れたキーが空でなければ、それを使います (ビルドのときのキーより優先します)。
+2. 入れたキーが空 (まだ入れていないか、画面で消した) なら、ビルドのときの環境変数のキーを使います (Rust の `option_env!` で、ビルドのときに読みます)。
+3. どちらもなければ、設定の画面でキーを入れる必要があります。
 
 | 環境変数                           | キー                                 |
 | :--------------------------------- | :----------------------------------- |
@@ -49,44 +49,44 @@ ML Kit のプラグインは Android のビルドが**アプリの直接の依�
 GEMINI_API_KEY=... npm run tauri:build
 ```
 
-ビルドのときのキーは、設定のファイルには保存しません (環境変数を変えてビルドし直せば、新しいキーになります)。Docker でビルドするときは、アプリの `docker-compose.yml` が、これらの環境変数を、シェルにあれば、コンテナに渡します (`-e` は要りません)。
+ビルドのときのキーは、設定のファイルには保存しません (環境変数を変えてビルドし直せば、新しいキーになります)。Docker でビルドするときは、シェルにこれらの環境変数があれば、アプリの `docker-compose.yml` がコンテナに渡します (`-e` は要りません)。
 
-- キーは、アプリの実行ファイルに入ります (取り出せます)。**自分で使うビルドだけで使い、配るビルド (公開するもの、CI の成果物) では、設定しないでください。**
-- 環境変数を変えたら、Cargo が、作り直します。
+- キーはアプリの実行ファイルに入ります (取り出せます)。**自分で使うビルドだけで使い、配るビルド (公開するもの、CI の成果物) では設定しないでください。**
+- 環境変数を変えると、Cargo が作り直します。
 
 ## ログ
 
-- Rust のログは、標準エラー出力と、アプリのデータのディレクトリの `logs/app.log` に出ます (5 MB を超えると世代送りして、3 世代を残します。`rust/src/logging.rs`)。画面 (TypeScript) のログ (`ts/lib/log.ts` の `log`) も、Rust へ送って (`log_frontend_message`)、同じファイルに残します。
-- レベル: 開発版 (`npm run tauri:dev`) はデバッグ以上、リリース版は情報 (最低限)、警告、エラーを出します。判定は、ログの初期化の中でします (Rust は `default_level`、TypeScript は `setupLog`)。環境変数 `RUST_LOG` で、Rust のレベルを上書きできます。
-- API キーなどの秘密は、ログに書きません。
+- Rust のログは、標準エラー出力と、アプリのデータのディレクトリの `logs/app.log` に出ます (5 MB を超えると世代送りして、3 世代を残します。`rust/src/logging.rs`)。画面 (TypeScript) のログ (`ts/lib/log.ts` の `log`) も Rust へ送って (`log_frontend_message`)、同じファイルに残します。
+- レベル: 開発版 (`npm run tauri:dev`) はデバッグ以上、リリース版は情報 (最低限)、警告、エラーを出します。判定はログの初期化の中でします (Rust は `default_level`、TypeScript は `setupLog`)。Rust のレベルは、環境変数 `RUST_LOG` で上書きできます。
+- API キーなどの秘密はログに書きません。
 
 ## ブラウザで開く
 
-ツールバーの ↗ (Chrome で開く) で、今のページを、端末の既定のブラウザ (Android では、ふつうは Chrome) で開きます。アプリは、ページの本文だけを取り出して、翻訳して、アプリの見た目で表示するので、サイトの元の見た目 (Chrome での表示) とは違います。元の見た目で見たいときに使います。
+ツールバーの ↗ (Chrome で開く) で、今のページを端末の既定のブラウザ (Android では、ふつうは Chrome) で開きます。アプリはページの本文だけを取り出し、翻訳してアプリの見た目で表示するので、サイトの元の見た目 (Chrome での表示) とは違います。元の見た目で見たいときに使います。
 
 ## 翻訳し直す、中止する
 
-本文を一番上で下に引いて離すか、ツールバーの ⟳ を押すと、今のページを取り直して、翻訳し直します (翻訳のキャッシュも使わずに、全ての文章を、今の翻訳サービスに送り直します。API の利用量が増えるので、訳を新しくしたいときだけ使います)。取得や翻訳の最中は、進み具合の横の「中止」で止められます (翻訳できた分は、表示したままです)。
+本文を一番上で下に引いて離すか、ツールバーの ⟳ を押すと、今のページを取り直して翻訳し直します。翻訳のキャッシュは使わずに、全ての文章を今の翻訳サービスに送り直します。API の利用量が増えるので、訳を新しくしたいときだけ使います。取得や翻訳の最中は、進み具合の横の「中止」で止められます (翻訳できた分は、表示したままです)。
 
 ## サイトの見た目で表示する
 
-メニュー (☰) の「サイト風」で、本文をサイトの CSS で表示します (もう一度押すと、アプリの見た目に戻ります。選んだ方を覚えます)。翻訳しても、文字だけを入れ替えるので、見出し、コード、表などは、サイトと同じ見た目になります。
+メニュー (☰) の「サイト風」で、本文をサイトの CSS で表示します (もう一度押すと、アプリの見た目に戻ります。選んだ方を覚えます)。翻訳では文字だけを入れ替えるので、見出し、コード、表などはサイトと同じ見た目になります。
 
 - ページを取り出すときに、本文を囲んでいた要素 (タグ、id、クラス) と、サイトの CSS (`<link rel="stylesheet">` と `<style>`。書かれた順と、`media` の条件) を残します (`ts/lib/siteLook.ts` の `collectFrame` と `collectStyles`)。
-- 表示するときに、CSS を Rust 側で取得し (ページと同じホストのものだけ。`fetch_css`)、`@import` を入れて、`url(...)` を絶対 URL にして、本文の外側に囲んでいた要素を作り直したページを、切り離した枠 (iframe) に表示します (`ts/ui/SiteDoc.tsx`)。
-- 枠の中では、サイトの JavaScript を動かしません (`sandbox` に `allow-scripts` を付けません)。JavaScript で描く部分 (タブの切り替え、コードの色づけ、ヘッダーや目次など本文の外の部分) は、出ないか、動きません。
-- JavaScript が描き終えたときに付けるクラスがないと本文を隠すサイトは、サイトの設定の `siteLookBodyClass` で、`body` に足すクラスを書きます (Kotlin の Writerside は `app-render-failed`)。
-- JavaScript が本文を組み直してから CSS を当てるサイト (Writerside の注意書きの枠など) は、サイトの設定の `siteLookRewrite` で、同じ形に組み直します (`ts/lib/siteLook.ts` の `rewriteForSiteLook`。組み直した本文も、`sanitize()` を通します)。
-- サイトのフォントを使うため、アプリの CSP の `font-src` に、サイトのホストを入れます。
+- 表示するときは、まず CSS を Rust 側で取得します (ページと同じホストのものだけ。`fetch_css`)。次に、`@import` を入れて `url(...)` を絶対 URL にし、本文を囲んでいた要素を作り直します。そのページを、切り離した枠 (iframe) に表示します (`ts/ui/SiteDoc.tsx`)。
+- 枠の中では、サイトの JavaScript を動かしません (`sandbox` に `allow-scripts` を付けません)。そのため、JavaScript で描く部分 (タブの切り替え、コードの色づけ、ヘッダーや目次など本文の外の部分) は、出ないか動きません。
+- 描き終えたときに JavaScript が付けるクラスがないと、本文を隠すサイトがあります。そのようなサイトは、`body` に足すクラスをサイトの設定の `siteLookBodyClass` に書きます (Kotlin の Writerside は `app-render-failed`)。
+- JavaScript が本文を組み直してから CSS を当てるサイト (Writerside の注意書きの枠など) では、サイトの設定の `siteLookRewrite` で同じ形に組み直します (`ts/lib/siteLook.ts` の `rewriteForSiteLook`。組み直した本文も `sanitize()` を通します)。
+- サイトのフォントを使うため、アプリの CSP の `font-src` にサイトのホストを入れます。
 - 原文と翻訳を並べる表示と、読んだ位置の記録とスクロールバーは、アプリの見た目のときだけです。
 
 ## 1 つの大きなページを分けて開く
 
-ドキュメントの全体が 1 つの大きな HTML のサイト (C++ Core Guidelines など) は、サイトの設定の `sections` で、見出しごとに分けて、別のページとして開きます (`ts/lib/sections.ts`)。1 ページが大きすぎると、翻訳の途中の表示と、スクロールが重くなるためです。
+ドキュメントの全体が 1 つの大きな HTML のサイト (C++ Core Guidelines など) は、サイトの設定の `sections` で見出しごとに分けて、別のページとして開きます (`ts/lib/sections.ts`)。1 ページが大きすぎると、翻訳の途中の表示とスクロールが重くなるためです。
 
-- 取得するのは元のページだけです (1 回取得して、覚えておきます)。分けたページの URL は、元のページの URL に `?section=<見出しの id>` を付けたものです。読んだ位置、しおり、翻訳の途中の経過は、分けたページごとです。
-- `split` (例: `h1`) で分けます。本文の直下の見出しに合わせます。最初の見出しより前は、最初の部分に入れます。各部分の最後に、次の部分へのリンクを足します。
-- ページの中のリンク (`#名前`) は、その名前がある部分の URL に書き換えます。`<a name="...">` にも、同じ値の id を付けて、移れるようにします。
+- 取得するのは元のページだけです (1 回取得して、覚えておきます)。分けたページの URL は、元のページの URL に `?section=<見出しの id>` を付けたものです。読んだ位置、しおり、翻訳の途中の経過は、分けたページごとに持ちます。
+- `split` (例: `h1`) で分けます。本文の直下の見出しに合わせます。最初の見出しより前の部分は、最初の部分に入れます。各部分の最後に、次の部分へのリンクを足します。
+- ページの中のリンク (`#名前`) は、その名前がある部分の URL に書き換えます。`<a name="...">` にも同じ値の id を付けて、移れるようにします。
 - メニュー (目次) は、`menuLevels` (例: `["h1", "h2", "h3"]`) の見出しから作ります (`menu` と `tabs` は使いません)。
 
 ## 開発 (Docker)
@@ -95,12 +95,12 @@ GEMINI_API_KEY=... npm run tauri:build
 export UID GID=$(id -g)
 docker compose run --rm install    # npm ci
 docker compose run --rm test       # Vitest と cargo test
-docker compose run --rm coverage   # ts/lib の行と分岐、rust/ の行が 100% (Rust の結果は tarpaulin-report.html)
+docker compose run --rm coverage   # ts/lib の行と分岐, rust/ の行が 100% (Rust の結果は tarpaulin-report.html)
 docker compose run --rm format     # 整形の確認 (format-fix で整形)
-docker compose run --rm analyze    # tsc、ESLint、Clippy
+docker compose run --rm analyze    # tsc, ESLint, Clippy
 ```
 
-今後の予定や検討事項については、[TODO.md](TODO.md) を参照してください。
+今後の予定と検討事項は [TODO.md](TODO.md) にあります。
 
 ## ライセンス
 

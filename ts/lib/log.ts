@@ -22,11 +22,11 @@ let sink: LogSink | undefined;
 /**
  * ログの仕組みを設定する. アプリの起動のときに 1 度だけ呼ぶ.
  *
- * 開発版はデバッグ以上, リリース版は情報 (最低限), 警告, エラーを出す (判定は, この関数の中でする).
+ * 開発版はデバッグ以上, リリース版は情報 (最低限), 警告, エラーを出す (判定はこの関数の中でする).
  * 出したログは, 開発者ツールのコンソールに加えて, バックエンドへも送る.
  *
  * @param dev 開発版か
- * @param send バックエンドへ送る関数 (なければ, 送らない)
+ * @param send バックエンドへ送る関数 (なければ送らない)
  */
 export function setupLog(dev: boolean, send?: LogSink): void {
   minimum = dev ? "debug" : "info";
@@ -44,7 +44,7 @@ export function isLogEnabled(level: LogLevel): boolean {
 }
 
 /**
- * ログの引数を, 1 行の文字列にする (例外は, スタックトレース. なければ, メッセージ).
+ * ログの引数を, 1 行の文字列にする (例外は, スタックトレース. なければメッセージ).
  *
  * @param args ログの引数
  * @returns 文字列
@@ -61,7 +61,7 @@ export function formatLog(args: readonly unknown[]): string {
 }
 
 /**
- * ログを出す (出さない重大度なら, 何もしない). バックエンドへ送れなくても, 例外にしない.
+ * ログを出す (出さない重大度なら何もしない). バックエンドへ送れなくても, 例外にしない.
  *
  * @param level 重大度
  * @param args ログの引数
@@ -71,7 +71,7 @@ function write(level: LogLevel, args: readonly unknown[]): void {
     return;
   }
   console[level](...args);
-  // 送れなくても, 画面には影響がないので, 無視する (ここで log を呼ぶと, 送るのが繰り返されるので, 呼ばない)
+  // 送れなくても画面には影響がないので, 無視する (ここで log を呼ぶと送るのが繰り返されるので, 呼ばない)
   sink?.(level, formatLog(args)).catch(() => undefined);
 }
 

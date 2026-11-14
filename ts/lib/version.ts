@@ -35,7 +35,7 @@ export function versionOf(url: string, pattern: RegExp): string | undefined {
  * @param url ページの URL
  * @param pattern パスに合わせる正規表現 (1 つ目のグループが版)
  * @param version 替える版
- * @returns 版を替えた URL (版が見つからないか, 読めない URL なら, そのまま)
+ * @returns 版を替えた URL (版が見つからないか, 読めない URL ならそのまま)
  */
 export function withVersion(url: string, pattern: RegExp, version: string): string {
   try {
@@ -71,7 +71,7 @@ export function parseVersions(
   const choices: VersionChoice[] = [];
   root.querySelectorAll(selector).forEach((link) => {
     const href = link.getAttribute("href");
-    // リンクのない項目は、版ではない (空のリンクは、ページ自身の URL になってしまう)
+    // リンクのない項目は, 版ではない (空のリンクは, ページ自身の URL になってしまう)
     const version = href === null ? undefined : versionOf(absoluteUrl(href, base), pattern);
     if (version !== undefined && !choices.some((choice) => choice.version === version)) {
       choices.push({ version, label: (link.textContent as string).replace(/\s+/g, " ").trim() });
@@ -112,7 +112,7 @@ export function compareVersions(a: string, b: string): number {
 }
 
 /**
- * ファイルの中身から, 版を読み取る.
+ * ファイルの中身から版を読み取る.
  *
  * @param text ファイルの中身
  * @param pattern 中身に合わせる正規表現 (1 つ目のグループが版)

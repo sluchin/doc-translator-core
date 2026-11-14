@@ -33,7 +33,7 @@ pub enum Provider {
 }
 
 impl Provider {
-    /// 翻訳のキャッシュを分ける名前 (サービスが違えば、翻訳も違う).
+    /// 翻訳のキャッシュを分ける名前 (サービスが違えば翻訳も違う).
     pub fn name(self) -> &'static str {
         match self {
             Provider::Google => "google",
@@ -45,7 +45,7 @@ impl Provider {
 }
 
 impl Provider {
-    /// 翻訳のキャッシュを分ける名前 (Gemini は, モデルが違えば、翻訳も違うので、モデルの名前も入れる).
+    /// 翻訳のキャッシュを分ける名前 (Gemini は, モデルが違えば, 翻訳も違うのでモデルの名前も入れる).
     pub fn namespace(self, gemini_model: &str) -> String {
         match self {
             Provider::Gemini => format!("{}:{}", self.name(), gemini_model),
@@ -63,13 +63,13 @@ impl Provider {
 pub struct Settings {
     /// 翻訳に使うサービス.
     pub provider: Provider,
-    /// 画面で入れた Google Cloud Translation の API キー (まだ入れていなければ None. 画面で消したら, 空).
+    /// 画面で入れた Google Cloud Translation の API キー (まだ入れていなければ None. 画面で消したら空).
     pub api_key: Option<String>,
-    /// 画面で入れた Gemini API のキー (まだ入れていなければ None. 画面で消したら, 空).
+    /// 画面で入れた Gemini API のキー (まだ入れていなければ None. 画面で消したら空).
     pub gemini_key: Option<String>,
     /// Gemini のモデル.
     pub gemini_model: String,
-    /// 無料の Google 翻訳に、同時に送る依頼の数.
+    /// 無料の Google 翻訳に, 同時に送る依頼の数.
     pub free_parallel: usize,
     /// ビルドのときの環境変数の, Google のキー (保存しない. 保存したキーが空のときに使う).
     #[serde(skip)]
@@ -94,7 +94,7 @@ impl Default for Settings {
     }
 }
 
-/// 画面から受け取る設定の変更. キーは、None なら変えず、空の文字列なら消す.
+/// 画面から受け取る設定の変更. キーは, None なら変えず空の文字列なら消す.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Update {
@@ -106,7 +106,7 @@ pub struct Update {
     pub gemini_key: Option<String>,
     /// Gemini のモデル (空なら既定).
     pub gemini_model: String,
-    /// 無料の Google 翻訳に、同時に送る依頼の数 (None なら変えない).
+    /// 無料の Google 翻訳に, 同時に送る依頼の数 (None なら変えない).
     #[serde(default)]
     pub free_parallel: Option<usize>,
 }
@@ -123,7 +123,7 @@ pub struct View {
     pub has_gemini_key: bool,
     /// Gemini のモデル.
     pub gemini_model: String,
-    /// 無料の Google 翻訳に、同時に送る依頼の数.
+    /// 無料の Google 翻訳に, 同時に送る依頼の数.
     pub free_parallel: usize,
     /// ML Kit が使えるか (Android だけ).
     pub mlkit_available: bool,
@@ -170,10 +170,10 @@ impl Settings {
         }
     }
 
-    /// ディレクトリの設定を読む (なければ, 読めなければ, 既定).
+    /// ディレクトリの設定を読む (なければ読めなければ既定).
     ///
     /// ビルドのときのキーは, 保存しないで持つだけにする (保存したキーが空のときに使う. 環境変数を変えて
-    /// ビルドし直せば, 新しいキーになる).
+    /// ビルドし直せば新しいキーになる).
     pub fn load(dir: &Path) -> Self {
         Self::load_with_keys(dir, BUILD_GOOGLE_KEY, BUILD_GEMINI_KEY)
     }
@@ -214,7 +214,7 @@ impl Settings {
         }
     }
 
-    /// 選んだサービスの API キー (ML Kit は、キーが要らないので、空の文字列).
+    /// 選んだサービスの API キー (ML Kit は, キーが要らないので空の文字列).
     pub fn key_for_provider(&self) -> Option<&str> {
         match self.provider {
             Provider::Google => effective(&self.api_key, &self.build_api_key),

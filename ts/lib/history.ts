@@ -41,11 +41,11 @@ export function push(nav: Nav, url: string): Nav {
 }
 
 /**
- * 今のページの履歴を, 別の URL に置き換える (転送のページから, 移り先に移ったとき. 戻るで, 転送のページに戻らない).
+ * 今のページの履歴を, 別の URL に置き換える (転送のページから移り先に移ったとき. 戻るで, 転送のページに戻らない).
  *
  * @param nav 履歴
  * @param url 置き換える URL
- * @returns 新しい履歴 (履歴が空なら, その URL だけの履歴)
+ * @returns 新しい履歴 (履歴が空ならその URL だけの履歴)
  */
 export function replace(nav: Nav, url: string): Nav {
   if (nav.index < 0) {
@@ -77,7 +77,7 @@ export function canGoForward(nav: Nav): boolean {
 }
 
 /**
- * 1 つ戻った履歴を返す (戻れなければ, 変えない).
+ * 1 つ戻った履歴を返す (戻れなければ変えない).
  *
  * @param nav 履歴
  * @returns 新しい履歴
@@ -87,7 +87,7 @@ export function back(nav: Nav): Nav {
 }
 
 /**
- * 1 つ進んだ履歴を返す (進めなければ, 変えない).
+ * 1 つ進んだ履歴を返す (進めなければ変えない).
  *
  * @param nav 履歴
  * @returns 新しい履歴

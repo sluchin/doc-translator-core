@@ -2,11 +2,11 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! 無料の Google 翻訳 (Web の翻訳が使う、非公式の入口). API キーは、要らない.
+//! 無料の Google 翻訳 (Web の翻訳が使う, 非公式の入口). API キーは, 要らない.
 //!
-//! 公式の API ではないので、仕様が変わったり、混んでいるときや、短い時間に多く送ったときに、
-//! 断られたりすることがある. 個人が、自分で読むために使う.
-//! プレーンテキストしか翻訳できないので、`PlainBackend` を通して、HTML の構造を保つ.
+//! 公式の API ではないので, 仕様が変わったり, 混んでいるときや, 短い時間に多く送ったときに,
+//! 断られたりすることがある. 個人が, 自分で読むために使う.
+//! プレーンテキストしか翻訳できないので, `PlainBackend` を通して HTML の構造を保つ.
 
 use std::future::Future;
 
@@ -19,13 +19,13 @@ use crate::translate::{SOURCE, TARGET};
 /// 無料の Google 翻訳の入口.
 pub const FREE_URL: &str = "https://translate.googleapis.com/translate_a/single";
 
-/// 同時に送る依頼の数の既定 (多すぎると、断られやすい).
+/// 同時に送る依頼の数の既定 (多すぎると, 断られやすい).
 pub const DEFAULT_PARALLEL: usize = 4;
 
-/// 同時に送る依頼の数の上限 (設定で、1 から、これまで選べる).
+/// 同時に送る依頼の数の上限 (設定で 1 からこれまで選べる).
 pub const MAX_PARALLEL: usize = 8;
 
-/// 依頼の本文を作る (URL の長さの制限を避けるため、文章は、POST の本文に入れる).
+/// 依頼の本文を作る (URL の長さの制限を避けるため, 文章は, POST の本文に入れる).
 pub fn free_body(text: &str) -> String {
     form_urlencoded::Serializer::new(String::new())
         .append_pair("client", "gtx")
@@ -36,7 +36,7 @@ pub fn free_body(text: &str) -> String {
         .finish()
 }
 
-/// 応答の JSON (`[[["翻訳","原文",...],...],...]`) から、翻訳をつなげて取り出す.
+/// 応答の JSON (`[[["翻訳","原文",...],...],...]`) から, 翻訳をつなげて取り出す.
 pub fn parse_free(text: &str) -> Result<String, String> {
     let value: serde_json::Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
     let parts = value
@@ -55,15 +55,15 @@ pub fn is_blocked(status: u16) -> bool {
     (300..400).contains(&status)
 }
 
-/// 同時に送る依頼の数を、1 から上限までに収める.
+/// 同時に送る依頼の数を, 1 から上限までに収める.
 pub fn clamp_parallel(parallel: usize) -> usize {
     parallel.clamp(1, MAX_PARALLEL)
 }
 
 /// 断られたときのメッセージ.
 ///
-/// 自動では、やり直さない (止められている間は、やり直しても断られ、止められる時間が延びることがある).
-/// 利用者が、画面の「やり直す」で送り直す.
+/// 自動では, やり直さない (止められている間は, やり直しても断られ, 止められる時間が延びることがある).
+/// 利用者が, 画面の「やり直す」で送り直す.
 pub fn free_error(status: u16) -> String {
     if is_blocked(status) {
         format!(
@@ -78,7 +78,7 @@ pub fn free_error(status: u16) -> String {
     }
 }
 
-/// 1 つの文章を翻訳する (空白だけの文章は、そのまま返す).
+/// 1 つの文章を翻訳する (空白だけの文章は, そのまま返す).
 ///
 /// `url` は, 依頼を送る先 (普通は [`FREE_URL`]. テストでは, テスト用のサーバー).
 pub async fn translate_one(
@@ -104,7 +104,7 @@ pub async fn translate_one(
     if status != 200 {
         return Err(free_error(status));
     }
-    // 前後の空白は、翻訳で落ちるので、元のままにそろえる
+    // 前後の空白は, 翻訳で落ちるので, 元のままにそろえる
     let translated = parse_free(&body)?;
     let lead: String = text.chars().take_while(|c| c.is_whitespace()).collect();
     let trail: String = text
@@ -129,7 +129,7 @@ pub struct GoogleFree {
 }
 
 impl GoogleFree {
-    /// クライアントと、同時に送る依頼の数 (1 から上限までに収める) から作る.
+    /// クライアントと, 同時に送る依頼の数 (1 から上限までに収める) から作る.
     pub fn new(client: reqwest::Client, parallel: usize) -> Self {
         Self::with_url(client, parallel, FREE_URL)
     }

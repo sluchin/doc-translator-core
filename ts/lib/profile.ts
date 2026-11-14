@@ -61,7 +61,7 @@ export interface SiteTab {
  * 1 つの大きなページ (ドキュメントの全体が 1 つの HTML) を, 見出しごとに分けて, 別のページとして開く設定.
  *
  * 分けたページの URL は, 元のページの URL に, クエリ `?section=<見出しの id>` を付けたもの. 取得するのは
- * 元のページだけ (1 回取得して, 覚えておく). ページの中のリンク (`#名前`) は, その名前がある部分のページを開く.
+ * 元のページだけ (1 回取得して覚えておく). ページの中のリンク (`#名前`) は, その名前がある部分のページを開く.
  * メニュー (目次) は, 見出しから作る.
  */
 export interface SectionSource {
@@ -80,7 +80,7 @@ export interface KeepTerms {
   /**
    * 翻訳しない言葉で始まる要素を翻訳に渡すときに, 前に付ける言葉 (`The` など. 表示はしない).
    * 翻訳サービスは, 先頭の「翻訳しない」印のあとの言葉を落とすことがある (「If expression」が「If」だけになる)
-   * ので, 文の中の言葉にする. なければ, 付けない.
+   * ので文の中の言葉にする. なければ付けない.
    */
   readonly lead?: string;
 }
@@ -91,7 +91,7 @@ export interface SiteProfile {
   readonly name: string;
   /** アプリの中で開く, ドキュメントのホスト (Rust 側の設定と同じにする). */
   readonly host: string;
-  /** アプリの中で開く, ページのパスの先頭 (`/` なら, ホストの全てのページ. 例: `/docs/`). */
+  /** アプリの中で開く, ページのパスの先頭 (`/` ならホストの全てのページ. 例: `/docs/`). */
   readonly pathPrefix: string;
   /** `pathPrefix` のほかに, アプリの中で開く, ページのパスの先頭 (例: `["/api/"]`. タブを使わないとき). */
   readonly otherPathPrefixes?: readonly string[];
@@ -101,19 +101,19 @@ export interface SiteProfile {
   readonly contentSelectors: readonly string[];
   /** 本文から取り除く要素の CSS セレクタ (スクリプトなどは, 共通で取り除く). */
   readonly removeSelectors: readonly string[];
-  /** 本文の中で, 表示するが, 翻訳しない要素の CSS セレクタ (関数の宣言など. なければ, 共通の決まりだけ). */
+  /** 本文の中で, 表示するが, 翻訳しない要素の CSS セレクタ (関数の宣言など. なければ共通の決まりだけ). */
   readonly noTranslateSelectors?: readonly string[];
   /**
    * 見出しなどの中で, 翻訳しない言葉 (プログラムの予約語など. 「If」や「For loops」の `If` `For` を,
-   * 英語の言葉として訳さないように). なければ, 印を付けない.
+   * 英語の言葉として訳さないように). なければ印を付けない.
    */
   readonly keepTerms?: KeepTerms;
   /**
-   * 本文を組み直す (要素を書き換える. 表示の形によらず, 取り出すときに行う. 畳める項目を `details` にするなど).
-   * 組み直した本文も, `sanitize()` を通す. なければ, 組み直さない.
+   * 本文を組み直す (要素を書き換える. 表示の形によらず取り出すときに行う. 畳める項目を `details` にするなど).
+   * 組み直した本文も, `sanitize()` を通す. なければ組み直さない.
    */
   readonly rewrite?: (content: Element) => void;
-  /** コードの中で、取り除く行 (サイトの JavaScript が隠す印など. 行全体に合わせる. なければ、取り除かない). */
+  /** コードの中で, 取り除く行 (サイトの JavaScript が隠す印など. 行全体に合わせる. なければ取り除かない). */
   readonly dropCodeLines?: RegExp;
   /** タイトルの末尾の, サイト名 (取り除く). */
   readonly titleSuffix: RegExp;
@@ -131,7 +131,7 @@ export interface SiteProfile {
   };
   /**
    * ドキュメントの版 (URL のパスに, 版の名前がある. 例: `/4.4.0/`). あれば, 画面で版を選べて,
-   * 翻訳のキャッシュも, 版ごとに分ける.
+   * 翻訳のキャッシュも版ごとに分ける.
    */
   readonly versions?: {
     /** パスに合わせる正規表現 (1 つ目のグループが版. 例: `/^\/([^/]+)\//`). */
@@ -142,20 +142,20 @@ export interface SiteProfile {
     readonly list?: {
       /** ファイルの URL. */
       readonly url: string;
-      /** ファイルの中身から, 版の選択肢を作る. */
+      /** ファイルの中身から版の選択肢を作る. */
       readonly parse: (text: string) => VersionChoice[];
     };
   };
   /**
    * URL に版がないサイトで, 今の版を読み取るファイル (ホストの中). あれば, 起動のときに 1 回だけ取得して,
-   * 翻訳のキャッシュを, 版ごとに分ける (版は選べない. 読めなければ, 分けない).
+   * 翻訳のキャッシュを, 版ごとに分ける (版は選べない. 読めなければ分けない).
    */
   readonly versionSource?: {
     /** ファイルの URL. */
     readonly url: string;
     /** 中身に合わせる正規表現 (1 つ目のグループが版). */
     readonly pattern: RegExp;
-    /** true なら, 合うもの全てのうち, 一番新しい版を選ぶ (版の一覧から, 今の版を選ぶとき). 既定は, 最初に合うもの. */
+    /** true なら, 合うもの全てのうち, 一番新しい版を選ぶ (版の一覧から今の版を選ぶとき). 既定は, 最初に合うもの. */
     readonly highest?: boolean;
   };
   /** サイトが日本語のとき true (翻訳しない. 原文の切り替えと設定のボタンも出さない). 既定は false. */
@@ -164,7 +164,7 @@ export interface SiteProfile {
    * サイトの見た目で表示するときに, `body` に足すクラス (空白で区切る).
    *
    * サイトの JavaScript は動かさないので, JavaScript が描き終えたときに付けるクラスがないと, 本文を
-   * 隠したままのサイトがある (Writerside の `app-render-failed` など). なければ, 足さない.
+   * 隠したままのサイトがある (Writerside の `app-render-failed` など). なければ足さない.
    */
   readonly siteLookBodyClass?: string;
   /**
@@ -172,13 +172,13 @@ export interface SiteProfile {
    *
    * サイトの JavaScript が本文を組み直してから, CSS を当てるサイトがある (Writerside の注意書きの
    * 枠など). JavaScript は動かさないので, 同じ形に組み直す. 組み直した本文も, `sanitize()` を通す.
-   * なければ, 組み直さない.
+   * なければ組み直さない.
    */
   readonly siteLookRewrite?: (content: Element) => void;
-  /** メニュー (目次) の取り方 (なければ, メニューを出さない. `tabs` があるときは, タブごとに決めるので, 使わない). */
+  /** メニュー (目次) の取り方 (なければメニューを出さない. `tabs` があるときは, タブごとに決めるので使わない). */
   readonly menu?: MenuSource;
   /**
-   * 1 つの大きなページを, 見出しごとに分けて開く (なければ, 分けない). あれば, メニューは見出しから作るので,
+   * 1 つの大きなページを, 見出しごとに分けて開く (なければ分けない). あれば, メニューは見出しから作るので,
    * `menu` と `tabs` は使わない.
    */
   readonly sections?: SectionSource;

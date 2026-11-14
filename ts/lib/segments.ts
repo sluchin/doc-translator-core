@@ -136,7 +136,7 @@ function flushRun(run: Node[], found: Element[]): void {
 }
 
 /**
- * 要素の中を歩いて, 翻訳する単位を集める.
+ * 要素の中を歩いて翻訳する単位を集める.
  *
  * @param element 要素
  * @param found 翻訳する単位の一覧 (ここに加える)

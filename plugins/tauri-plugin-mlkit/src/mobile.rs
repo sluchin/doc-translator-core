@@ -37,7 +37,7 @@ impl<R: Runtime> Mlkit<R> {
         Ok(response.texts)
     }
 
-    /// ファイルを, Google Drive のアプリの「ドライブに保存」の画面に渡す (Drive がなければ, 共有先の一覧).
+    /// ファイルを, Google Drive のアプリの「ドライブに保存」の画面に渡す (Drive がなければ共有先の一覧).
     ///
     /// ファイルは, アプリのキャッシュのディレクトリに置く (Android の `FileProvider` が, そこだけを渡せる).
     pub async fn share_to_drive(&self, path: String) -> crate::Result<()> {

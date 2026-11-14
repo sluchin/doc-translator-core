@@ -8,11 +8,11 @@ import { invoke } from "@tauri-apps/api/core";
 import type { LogLevel } from "../lib/log";
 import { exportStamp } from "../lib/stamp";
 
-/** API キーがないときの、翻訳のエラー (Rust 側と合わせる). */
+/** API キーがないときの, 翻訳のエラー (Rust 側と合わせる). */
 export const NO_API_KEY = "NO_API_KEY";
 
 /**
- * Zephyr のドキュメントのページの HTML を、Rust 側で取得する.
+ * Zephyr のドキュメントのページの HTML を, Rust 側で取得する.
  *
  * @param url ページの URL
  * @returns HTML
@@ -22,7 +22,7 @@ export function fetchPage(url: string): Promise<string> {
 }
 
 /**
- * サイトの JSON ファイル (メニューなど) を、Rust 側で取得する.
+ * サイトの JSON ファイル (メニューなど) を, Rust 側で取得する.
  *
  * @param url JSON の URL
  * @returns JSON の文字列
@@ -32,7 +32,7 @@ export function fetchJson(url: string): Promise<string> {
 }
 
 /**
- * サイトの CSS を、Rust 側で取得する (サイトの見た目で表示するため. ページと同じホストのものだけ).
+ * サイトの CSS を, Rust 側で取得する (サイトの見た目で表示するため. ページと同じホストのものだけ).
  *
  * @param url CSS の URL
  * @returns CSS
@@ -42,21 +42,21 @@ export function fetchCss(url: string): Promise<string> {
 }
 
 /**
- * ML Kit が動くかを確かめる (翻訳のモデルを取得して、短い文章を翻訳する).
+ * ML Kit が動くかを確かめる (翻訳のモデルを取得して, 短い文章を翻訳する).
  *
- * @returns 翻訳の結果 (失敗したら、例外)
+ * @returns 翻訳の結果 (失敗したら例外)
  */
 export function checkMlkit(): Promise<string> {
   return invoke<string>("check_mlkit");
 }
 
 /**
- * 文章 (HTML の断片) を、Rust 側で日本語に翻訳する.
+ * 文章 (HTML の断片) を, Rust 側で日本語に翻訳する.
  *
  * @param texts 文章
- * @param scope キャッシュを分ける範囲 (ドキュメントの版. なければ、分けない)
- * @param fresh キャッシュにある文章も、翻訳し直すか (「翻訳し直す」のとき)
- * @returns 翻訳 (同じ数、同じ順)
+ * @param scope キャッシュを分ける範囲 (ドキュメントの版. なければ分けない)
+ * @param fresh キャッシュにある文章も, 翻訳し直すか (「翻訳し直す」のとき)
+ * @returns 翻訳 (同じ数, 同じ順)
  */
 export function translate(texts: string[], scope?: string, fresh = false): Promise<string[]> {
   return invoke<string[]>("translate", { texts, scope, fresh });
@@ -66,7 +66,7 @@ export function translate(texts: string[], scope?: string, fresh = false): Promi
  * 翻訳済みの文章を, 今のサービスのキャッシュから探す (通信しない).
  *
  * @param texts 文章 (HTML の断片)
- * @param scope キャッシュを分ける範囲 (ドキュメントの版. なければ、分けない)
+ * @param scope キャッシュを分ける範囲 (ドキュメントの版. なければ分けない)
  * @returns 翻訳 (同じ数, 同じ順. ない文章は null)
  */
 export function lookupCache(texts: string[], scope?: string): Promise<(string | null)[]> {
@@ -76,7 +76,7 @@ export function lookupCache(texts: string[], scope?: string): Promise<(string | 
 /** 翻訳に使うサービス. */
 export type Provider = "google" | "gemini" | "mlkit" | "googlefree";
 
-/** 設定 (API キーそのものは、含まれない). */
+/** 設定 (API キーそのものは, 含まれない). */
 export interface SettingsView {
   /** 翻訳に使うサービス. */
   provider: Provider;
@@ -86,13 +86,13 @@ export interface SettingsView {
   hasGeminiKey: boolean;
   /** Gemini のモデル. */
   geminiModel: string;
-  /** 無料の Google 翻訳に、同時に送る依頼の数. */
+  /** 無料の Google 翻訳に, 同時に送る依頼の数. */
   freeParallel: number;
   /** ML Kit が使えるか (Android だけ). */
   mlkitAvailable: boolean;
 }
 
-/** 設定の変更. キーは、undefined なら変えず、空の文字列なら消す. */
+/** 設定の変更. キーは, undefined なら変えず空の文字列なら消す. */
 export interface SettingsUpdate {
   /** 翻訳に使うサービス. */
   provider: Provider;
@@ -102,7 +102,7 @@ export interface SettingsUpdate {
   geminiKey?: string;
   /** Gemini のモデル (空なら既定). */
   geminiModel: string;
-  /** 無料の Google 翻訳に、同時に送る依頼の数 (undefined なら変えない). */
+  /** 無料の Google 翻訳に, 同時に送る依頼の数 (undefined なら変えない). */
   freeParallel?: number;
 }
 
@@ -125,7 +125,7 @@ export function setSettings(update: SettingsUpdate): Promise<SettingsView> {
   return invoke<SettingsView>("set_settings", { update });
 }
 
-/** 書き出しの結果: 保存した (PC)、Google Drive に渡した (Android)、やめた. */
+/** 書き出しの結果: 保存した (PC), Google Drive に渡した (Android), やめた. */
 export type Exported = "saved" | "shared" | "cancelled";
 
 /**
@@ -138,7 +138,7 @@ export function exportCache(): Promise<Exported> {
 }
 
 /**
- * 書き出したキャッシュを読み込んで、端末のキャッシュに足し合わせる (選択の画面を開く).
+ * 書き出したキャッシュを読み込んで, 端末のキャッシュに足し合わせる (選択の画面を開く).
  *
  * @returns 新しく足した翻訳の数 (選ぶのをやめたら null)
  */

@@ -20,16 +20,16 @@ pub const TARGET: &str = "ja";
 /// Gemini の API のアドレスの前半.
 pub const GEMINI_URL: &str = "https://generativelanguage.googleapis.com/v1beta/models";
 
-/// Gemini に、やり直す回数 (混んでいるとき: 429 と 503).
+/// Gemini に, やり直す回数 (混んでいるとき: 429 と 503).
 const GEMINI_RETRIES: u32 = 2;
 
-/// Gemini に、1 回の依頼で渡す文章の数 (小さく分けるほど、1 回の応答 (出力の長さ) が短く、速い).
+/// Gemini に, 1 回の依頼で渡す文章の数 (小さく分けるほど, 1 回の応答 (出力の長さ) が短く, 速い).
 pub const GEMINI_BATCH: usize = 10;
 
-/// Gemini に、同時に送る依頼の数.
+/// Gemini に, 同時に送る依頼の数.
 pub const GEMINI_PARALLEL: usize = 4;
 
-/// Gemini が、依頼と違う数の翻訳を返したときのエラー (このときは、半分に分けて、やり直す).
+/// Gemini が, 依頼と違う数の翻訳を返したときのエラー (このときは, 半分に分けてやり直す).
 pub const GEMINI_MISMATCH: &str = "Gemini returned a different number of texts";
 
 /// Gemini の指示 (システムプロンプト).
@@ -45,10 +45,10 @@ Use a natural, accurate technical Japanese style (です・ます調). Do not ad
 /// 翻訳元の言語.
 pub const SOURCE: &str = "en";
 
-/// キャッシュに残す文章の数の上限 (超えたら, 古いものから捨てる).
+/// キャッシュに残す文章の数の上限 (超えたら古いものから捨てる).
 const CACHE_CAPACITY: usize = 20_000;
 
-/// Google Cloud Translation に、やり直す回数 (混んでいるとき: 429 と 503. 大きなページで, 続けて送ると返る).
+/// Google Cloud Translation に, やり直す回数 (混んでいるとき: 429 と 503. 大きなページで続けて送ると返る).
 const GOOGLE_RETRIES: u32 = 2;
 
 /// Google Cloud Translation (Basic, v2) の URL.
@@ -79,7 +79,7 @@ struct Entry {
 }
 
 impl Cache {
-    /// 上限を決めて, 空のキャッシュを作る.
+    /// 上限を決めて空のキャッシュを作る.
     pub fn new(capacity: usize) -> Self {
         Self {
             map: HashMap::new(),
@@ -93,7 +93,7 @@ impl Cache {
         self.map.get(key)
     }
 
-    /// 翻訳を足す (上限を超えたら, 古いものを捨てる).
+    /// 翻訳を足す (上限を超えたら古いものを捨てる).
     pub fn insert(&mut self, key: String, value: String) {
         if self.map.insert(key.clone(), value).is_none() {
             self.order.push_back(key);
@@ -118,7 +118,7 @@ impl Cache {
             .collect()
     }
 
-    /// JSON から読む (読めなければ, 空).
+    /// JSON から読む (読めなければ空).
     pub fn from_json(text: &str, capacity: usize) -> Self {
         let mut cache = Self::new(capacity);
         for entry in serde_json::from_str::<Vec<Entry>>(text).unwrap_or_default() {
@@ -173,7 +173,7 @@ pub fn load_cache(text: &str) -> Cache {
     Cache::from_json(text, CACHE_CAPACITY)
 }
 
-/// キャッシュのキー (サービスの名前と文章から作る. サービスが違えば、翻訳も違う).
+/// キャッシュのキー (サービスの名前と文章から作る. サービスが違えば翻訳も違う).
 pub fn cache_key(namespace: &str, text: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(namespace.as_bytes());
@@ -186,9 +186,9 @@ pub fn cache_key(namespace: &str, text: &str) -> String {
         .collect()
 }
 
-/// キャッシュを分ける名前に, 範囲 (ドキュメントの版など) を足す (範囲が空なら, そのまま).
+/// キャッシュを分ける名前に, 範囲 (ドキュメントの版など) を足す (範囲が空ならそのまま).
 ///
-/// 版ごとに, 別のキャッシュにする (版が変わったら, 前の版の訳を使わない).
+/// 版ごとに, 別のキャッシュにする (版が変わったら前の版の訳を使わない).
 pub fn scoped_namespace(namespace: &str, scope: Option<&str>) -> String {
     match scope.map(str::trim) {
         Some(scope) if !scope.is_empty() => format!("{namespace}@{scope}"),
@@ -213,7 +213,7 @@ pub fn lookup_cache(
 /// キャッシュを使って翻訳する. キャッシュにある文章は, バックエンドに渡さない.
 ///
 /// キャッシュにない文章は, `batch` 個ずつバックエンドに渡して, 翻訳できたらすぐにキャッシュに入れる
-/// (途中で断られても, それまでに翻訳できた分は, 捨てない). 返すのは, 翻訳と, キャッシュに足した数.
+/// (途中で断られても, それまでに翻訳できた分は捨てない). 返すのは, 翻訳と, キャッシュに足した数.
 /// `fresh` なら, キャッシュにある文章も, 翻訳し直して, キャッシュを書き換える (画面の「翻訳し直す」).
 pub async fn translate_with_cache<B: Backend>(
     cache: &Mutex<Cache>,
@@ -320,7 +320,7 @@ pub fn google_body(texts: &[String]) -> String {
     .unwrap_or_default()
 }
 
-/// 応答の JSON から, 翻訳を取り出す.
+/// 応答の JSON から翻訳を取り出す.
 pub fn parse_google(text: &str) -> Result<Vec<String>, String> {
     let response: GoogleResponse = serde_json::from_str(text).map_err(|e| e.to_string())?;
 
@@ -332,7 +332,7 @@ pub fn parse_google(text: &str) -> Result<Vec<String>, String> {
         .collect())
 }
 
-/// エラーの応答から, メッセージを取り出す (読めなければ, 状態だけ).
+/// エラーの応答から, メッセージを取り出す (読めなければ状態だけ).
 pub fn google_error(status: u16, text: &str) -> String {
     let message = serde_json::from_str::<serde_json::Value>(text)
         .ok()
@@ -381,14 +381,14 @@ impl Backend for GoogleBackend {
     }
 }
 
-/// Gemini API. キーは、利用者が自分のものを設定する.
+/// Gemini API. キーは, 利用者が自分のものを設定する.
 pub struct GeminiBackend {
     client: reqwest::Client,
     api_key: String,
     model: String,
     /// モデルの一覧の URL (この下に, モデルの名前を付けて送る).
     base: String,
-    /// モデルが、考える機能を切る設定 (`thinkingBudget: 0`) を断ったとき true (以後は、設定を付けない).
+    /// モデルが, 考える機能を切る設定 (`thinkingBudget: 0`) を断ったとき true (以後は, 設定を付けない).
     thinking_rejected: Arc<AtomicBool>,
 }
 
@@ -415,10 +415,10 @@ impl GeminiBackend {
     }
 }
 
-/// Gemini の依頼の本文を作る (入力は JSON の配列、出力も文字列の JSON の配列にさせる).
+/// Gemini の依頼の本文を作る (入力は JSON の配列, 出力も文字列の JSON の配列にさせる).
 ///
-/// `no_thinking` が true のときは、考える機能を切る (`thinkingBudget: 0`). 翻訳には、考える時間が要らず、
-/// 切ると、応答が、ずっと速い.
+/// `no_thinking` が true のときは, 考える機能を切る (`thinkingBudget: 0`). 翻訳には, 考える時間が要らず,
+/// 切ると, 応答が, ずっと速い.
 pub fn gemini_body(texts: &[String], no_thinking: bool) -> String {
     let mut config = serde_json::json!({
         "temperature": 0.2,
@@ -439,14 +439,14 @@ pub fn gemini_body(texts: &[String], no_thinking: bool) -> String {
     .to_string()
 }
 
-/// 考える機能を切る設定を、モデルが断った応答か (400 で、メッセージに thinking とある).
+/// 考える機能を切る設定を, モデルが断った応答か (400 で, メッセージに thinking とある).
 pub fn rejects_thinking(status: u16, body: &str) -> bool {
     status == 400 && body.to_ascii_lowercase().contains("thinking")
 }
 
-/// 空白だけの文章を除く (モデルが、空の文字列を落として、数が合わなくなることがある).
+/// 空白だけの文章を除く (モデルが, 空の文字列を落として, 数が合わなくなることがある).
 ///
-/// 返すのは、送る文章の、元の位置の一覧と、送る文章.
+/// 返すのは, 送る文章の, 元の位置の一覧と, 送る文章.
 pub fn split_blank(texts: &[String]) -> (Vec<usize>, Vec<String>) {
     texts
         .iter()
@@ -456,7 +456,7 @@ pub fn split_blank(texts: &[String]) -> (Vec<usize>, Vec<String>) {
         .unzip()
 }
 
-/// 翻訳を、元の位置に戻す (除いた空白だけの文章は、そのまま).
+/// 翻訳を, 元の位置に戻す (除いた空白だけの文章は, そのまま).
 pub fn merge_blank(texts: &[String], indexes: &[usize], translated: Vec<String>) -> Vec<String> {
     let mut merged = texts.to_vec();
     for (index, result) in indexes.iter().zip(translated) {
@@ -466,9 +466,9 @@ pub fn merge_blank(texts: &[String], indexes: &[usize], translated: Vec<String>)
     merged
 }
 
-/// 文章を翻訳する. 数が合わないエラー ([`GEMINI_MISMATCH`]) のときは、半分に分けて、それぞれ、やり直す.
+/// 文章を翻訳する. 数が合わないエラー ([`GEMINI_MISMATCH`]) のときは, 半分に分けて, それぞれ, やり直す.
 ///
-/// 1 つだけで合わないときは、原文のままにする (ページ全体は、失敗にしない). 数の違い以外のエラーは、そのまま返す.
+/// 1 つだけで合わないときは, 原文のままにする (ページ全体は, 失敗にしない). 数の違い以外のエラーは, そのまま返す.
 pub fn translate_halving<'a, F, Fut>(
     texts: Vec<String>,
     send: &'a F,
@@ -494,12 +494,12 @@ where
     })
 }
 
-/// 文章を、1 回の依頼の大きさ (`size` 個) に分ける (順は変えない).
+/// 文章を, 1 回の依頼の大きさ (`size` 個) に分ける (順は変えない).
 pub fn split_batches(texts: &[String], size: usize) -> Vec<Vec<String>> {
     texts.chunks(size.max(1)).map(<[String]>::to_vec).collect()
 }
 
-/// Gemini の応答から、翻訳を取り出す (配列の長さが依頼と違えば、失敗).
+/// Gemini の応答から, 翻訳を取り出す (配列の長さが依頼と違えば, 失敗).
 pub fn parse_gemini(text: &str, expected: usize) -> Result<Vec<String>, String> {
     let value: serde_json::Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
     if let Some(reason) = value["promptFeedback"]["blockReason"].as_str() {
@@ -523,17 +523,17 @@ pub fn parse_gemini(text: &str, expected: usize) -> Result<Vec<String>, String> 
     Ok(texts)
 }
 
-/// 混んでいるときの応答 (少し待って、やり直す).
+/// 混んでいるときの応答 (少し待ってやり直す).
 pub fn is_retryable(status: u16) -> bool {
     status == 429 || status == 503
 }
 
-/// やり直す前に待つ秒数 (やり直しの回数が増えるほど、長く).
+/// やり直す前に待つ秒数 (やり直しの回数が増えるほど, 長く).
 pub fn retry_delay(attempt: u32) -> std::time::Duration {
     std::time::Duration::from_secs(2 * u64::from(attempt + 1))
 }
 
-/// Gemini に、1 回の依頼を送って、翻訳を受け取る (混んでいるときは、やり直す. 考える機能を断られたら、切らずに送り直す).
+/// Gemini に 1 回の依頼を送って, 翻訳を受け取る (混んでいるときはやり直す. 考える機能を断られたら, 切らずに送り直す).
 async fn gemini_request(
     client: reqwest::Client,
     url: String,
@@ -559,7 +559,7 @@ async fn gemini_request(
             return parse_gemini(&text, texts.len());
         }
         if no_thinking && rejects_thinking(status, &text) {
-            // このモデルは、考える機能を切れない. 設定を付けずに、送り直す
+            // このモデルは, 考える機能を切れない. 設定を付けずに, 送り直す
             thinking_rejected.store(true, Ordering::Relaxed);
         } else if is_retryable(status) && attempt < GEMINI_RETRIES {
             tokio::time::sleep(retry_delay(attempt)).await;
@@ -580,7 +580,7 @@ impl Backend for GeminiBackend {
         let key = self.api_key.clone();
         let rejected = self.thinking_rejected.clone();
 
-        // 小さく分けて、GEMINI_PARALLEL 個ずつ、同時に送る (1 つが失敗したら、残りは、やめる)
+        // 小さく分けて, GEMINI_PARALLEL 個ずつ同時に送る (1 つが失敗したら, 残りはやめる)
         let all = texts.to_vec();
         let (indexes, sendable) = split_blank(texts);
         let batches = split_batches(&sendable, GEMINI_BATCH);

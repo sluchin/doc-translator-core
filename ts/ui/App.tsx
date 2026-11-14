@@ -37,20 +37,20 @@ function openInBrowser(url: string): void {
   openUrl(url).catch((e: unknown) => log.warn("Could not open the browser", e));
 }
 
-/** 原文と翻訳を並べられる、画面の幅 (PC など). 狭い画面 (スマホ) では、並べない. */
+/** 原文と翻訳を並べられる, 画面の幅 (PC など). 狭い画面 (スマホ) では, 並べない. */
 const WIDE = "(min-width: 900px)";
 
-/** サイトの見た目で表示するかを覚えておく、端末の保存のキー. */
+/** サイトの見た目で表示するかを覚えておく, 端末の保存のキー. */
 const SITE_LOOK_KEY = "doc-translator:site-look";
 
-/** 原文を並べるかを覚えておく、端末の保存のキー. */
+/** 原文を並べるかを覚えておく, 端末の保存のキー. */
 const SIDE_BY_SIDE_KEY = "doc-translator:side-by-side";
 
-/** 原文の側の本文は、読んだ位置を覚えない (翻訳の側が覚える). */
+/** 原文の側の本文は, 読んだ位置を覚えない (翻訳の側が覚える). */
 const ignoreScroll = () => undefined;
 
 /**
- * 画面が広いか (メディアクエリに合うか) を返す. 画面の幅が変わったら、更新する.
+ * 画面が広いか (メディアクエリに合うか) を返す. 画面の幅が変わったら更新する.
  *
  * @param query メディアクエリ
  * @returns 合えば true
@@ -67,7 +67,7 @@ function useMedia(query: string): boolean {
 }
 
 /**
- * 原文を並べるかを、端末から読む (読めなければ、並べない).
+ * 原文を並べるかを, 端末から読む (読めなければ並べない).
  *
  * @returns 並べるなら true
  */
@@ -80,7 +80,7 @@ function loadSideBySide(): boolean {
 }
 
 /**
- * サイトの見た目で表示するかを、端末から読む (読めなければ、アプリの見た目).
+ * サイトの見た目で表示するかを, 端末から読む (読めなければアプリの見た目).
  *
  * @returns サイトの見た目なら true
  */
@@ -99,7 +99,7 @@ interface Props {
 }
 
 /**
- * アプリの画面: ツールバー、進み具合、本文.
+ * アプリの画面: ツールバー, 進み具合, 本文.
  *
  * @param props 引数
  * @returns 画面
@@ -115,13 +115,13 @@ export default function App({ profile }: Props) {
   const wide = useMedia(WIDE);
   const [sideBySide, setSideBySide] = useState(loadSideBySide);
   const [siteLookOn, setSiteLookOn] = useState(loadSiteLook);
-  // サイトの見た目で表示するのは、ページに、その材料 (囲んでいた要素と CSS) があるときだけ
+  // サイトの見た目で表示するのは, ページに, その材料 (囲んでいた要素と CSS) があるときだけ
   const siteLook = siteLookOn && viewer.frame !== undefined && viewer.styles !== undefined;
-  // 原文と翻訳を並べるのは、広い画面で、翻訳を表示しているときだけ (サイトの見た目のときは、並べない)
+  // 原文と翻訳を並べるのは, 広い画面で, 翻訳を表示しているときだけ (サイトの見た目のときは, 並べない)
   const split =
     wide && sideBySide && !siteLook && profile.japanese !== true && viewer.lang === "ja";
   useSyncScroll(sourceBox, box, split, viewer.html);
-  // 並べる・閉じる前の、翻訳の側の段落の位置 (幅が変わって、折り返しが変わっても、同じ段落に戻すため)
+  // 並べる・閉じる前の, 翻訳の側の段落の位置 (幅が変わって, 折り返しが変わっても同じ段落に戻すため)
   const beforeSplit = useRef<{ blocks: Block[]; top: number }>(undefined);
 
   useLayoutEffect(() => {
@@ -146,7 +146,7 @@ export default function App({ profile }: Props) {
     try {
       window.localStorage.setItem(SIDE_BY_SIDE_KEY, next ? "1" : "0");
     } catch {
-      // 覚えられなくても、今の表示は切り替える
+      // 覚えられなくても, 今の表示は切り替える
     }
   };
   const toggleSiteLook = () => {
@@ -155,12 +155,12 @@ export default function App({ profile }: Props) {
     try {
       window.localStorage.setItem(SITE_LOOK_KEY, next ? "1" : "0");
     } catch {
-      // 覚えられなくても、今の表示は切り替える
+      // 覚えられなくても, 今の表示は切り替える
     }
   };
   const [address, setAddress] = useState<string>();
   const busy = viewer.loading || viewer.progress !== undefined;
-  // 本文を一番上で下に引いて離すと、取り直して、翻訳し直す (取得や翻訳の最中は、引けない)
+  // 本文を一番上で下に引いて離すと, 取り直して, 翻訳し直す (取得や翻訳の最中は, 引けない)
   const pulled = usePullRefresh(box, viewer.reload, !busy);
 
   useEffect(() => {

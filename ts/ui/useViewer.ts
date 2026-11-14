@@ -61,25 +61,25 @@ import {
   translatePage,
 } from "../lib/translatePage";
 
-/** 表示の言語: 日本語 (翻訳) か、英語 (原文). */
+/** 表示の言語: 日本語 (翻訳) か, 英語 (原文). */
 export type Lang = "ja" | "en";
 
-/** 開いたページと、その翻訳. */
+/** 開いたページと, その翻訳. */
 interface Entry {
   page: DocPage;
   /** 全部を翻訳したもの. */
   translated?: TranslatedPage;
-  /** 翻訳の途中 (上から翻訳した分. 翻訳がまだ終わらないうちに、先に表示する). */
+  /** 翻訳の途中 (上から翻訳した分. 翻訳がまだ終わらないうちに, 先に表示する). */
   partial?: TranslatedPage;
 }
 
-/** 覚えておくページの数 (多いものから、古い順に捨てる). */
+/** 覚えておくページの数 (多いものから古い順に捨てる). */
 const CACHE_PAGES = 30;
 
-/** 転送のページを、続けてたどる回数の上限 (転送が輪になっても、止まる). */
+/** 転送のページを, 続けてたどる回数の上限 (転送が輪になっても止まる). */
 const MAX_REDIRECTS = 3;
 
-/** 位置を書き込むまでの待ち時間 [ms] (スクロールのたびには、書かない). */
+/** 位置を書き込むまでの待ち時間 [ms] (スクロールのたびには, 書かない). */
 const SAVE_DELAY_MS = 400;
 
 /**
@@ -95,17 +95,17 @@ function storage(): KeyValue | undefined {
   }
 }
 
-/** 画面に出す、ビューアの状態と操作. */
+/** 画面に出す, ビューアの状態と操作. */
 export interface Viewer {
   /** 表示するタイトル. */
   title: string;
   /** 表示する本文の HTML. */
   html: string;
-  /** 原文の本文の HTML (原文と翻訳を並べるとき、左に出す). */
+  /** 原文の本文の HTML (原文と翻訳を並べるとき, 左に出す). */
   sourceHtml: string;
-  /** 本文を囲んでいた要素 (サイトの見た目で表示するとき. 前の版で保存したページには、ない). */
+  /** 本文を囲んでいた要素 (サイトの見た目で表示するとき. 前の版で保存したページには, ない). */
   frame?: readonly FrameNode[];
-  /** サイトの CSS (サイトの見た目で表示するとき. 前の版で保存したページには、ない). */
+  /** サイトの CSS (サイトの見た目で表示するとき. 前の版で保存したページには, ない). */
   styles?: SiteStyles;
   /** 今のページの URL. */
   url: string;
@@ -117,7 +117,7 @@ export interface Viewer {
   progress?: Progress;
   /** エラーのメッセージ. */
   error?: string;
-  /** API キーがなくて、翻訳できなかったか. */
+  /** API キーがなくて翻訳できなかったか. */
   needsKey: boolean;
   /** 英語のまま残した文章の数. */
   kept: number;
@@ -131,29 +131,29 @@ export interface Viewer {
   tab: number;
   /** 今のタブにメニューがあるか. */
   hasMenu: boolean;
-  /** タブを切り替える (そのタブで最後に開いたページ. なければ、最初のページ). */
+  /** タブを切り替える (そのタブで最後に開いたページ. なければ最初のページ). */
   selectTab: (index: number) => void;
   /** 選べるドキュメントの版 (版のないサイトでは空). */
   versions: readonly VersionChoice[];
   /** 今のページの版 (版のないサイトでは undefined). */
   version?: string;
-  /** 版を替える (同じパスの、別の版のページを開く). */
+  /** 版を替える (同じパスの, 別の版のページを開く). */
   selectVersion: (version: string) => void;
   /** 今の版のキャッシュで翻訳する関数 (メニューの名前の翻訳に使う). */
   translate: TranslateFn;
-  /** 表示している本文のページの URL (フラグメントなし. 取得が終わるまでは、前のページ). */
+  /** 表示している本文のページの URL (フラグメントなし. 取得が終わるまでは, 前のページ). */
   docUrl: string;
-  /** 開いたときに戻す、読んだ位置 (0 から 1. 覚えていなければ undefined). */
+  /** 開いたときに戻す, 読んだ位置 (0 から 1. 覚えていなければ undefined). */
   restore?: number;
   /** 本文のスクロールの状態 (スクロールバーに使う). */
   metrics: Metrics;
-  /** 今のページの、読んでいる場所 (何画面目か / 全体で何画面か). */
+  /** 今のページの, 読んでいる場所 (何画面目か / 全体で何画面か). */
   position: Position;
-  /** 今のページを、どこまで読んだか (0 から 1). */
+  /** 今のページを, どこまで読んだか (0 から 1). */
   scroll: number;
   /** しおり. */
   bookmarks: readonly Bookmark[];
-  /** 今のページに、しおりがあるか. */
+  /** 今のページに, しおりがあるか. */
   bookmarked: boolean;
   /** 戻れるか. */
   canBack: boolean;
@@ -167,27 +167,27 @@ export interface Viewer {
   goForward: () => void;
   /** トップのページを開く. */
   home: () => void;
-  /** 本文をスクロールした (読んだ位置を、少し待って、覚える). */
+  /** 本文をスクロールした (読んだ位置を, 少し待って覚える). */
   setScroll: (metrics: Metrics) => void;
-  /** 今のページのしおりを、付ける (あれば外す). */
+  /** 今のページのしおりを, 付ける (あれば外す). */
   toggleBookmark: () => void;
   /** しおりを外す. */
   removeBookmark: (url: string) => void;
   /** 言語を切り替える. */
   toggleLang: () => void;
-  /** 翻訳をやり直す (翻訳サービスや API キーを変えたあとなど. 覚えていた翻訳は、捨てる). */
+  /** 翻訳をやり直す (翻訳サービスや API キーを変えたあとなど. 覚えていた翻訳は, 捨てる). */
   retry: () => void;
-  /** 今のページを取り直して、翻訳し直す (翻訳のキャッシュも使わない. 下に引いたとき). */
+  /** 今のページを取り直して, 翻訳し直す (翻訳のキャッシュも使わない. 下に引いたとき). */
   reload: () => void;
-  /** 取得と翻訳を止める (翻訳できた分は、そのまま表示する). */
+  /** 取得と翻訳を止める (翻訳できた分は, そのまま表示する). */
   cancel: () => void;
 }
 
 /**
- * ドキュメントを開いて、翻訳して表示する、状態と操作.
+ * ドキュメントを開いて, 翻訳して表示する, 状態と操作.
  *
- * ページを開いたとき (リンクのクリック) に、取得して,翻訳する. 開いたページは覚えておき、
- * 戻ったり,原文に切り替えたりするときは、取り直さない.
+ * ページを開いたとき (リンクのクリック) に, 取得して,翻訳する. 開いたページは覚えておき,
+ * 戻ったり,原文に切り替えたりするときは, 取り直さない.
  *
  * @param profile サイトの設定
  * @returns ビューア
@@ -215,11 +215,11 @@ export function useViewer(profile: SiteProfile): Viewer {
   const [needsKey, setNeedsKey] = useState(false);
   const [anchor, setAnchor] = useState("");
   const [htmlMenu, setHtmlMenu] = useState<readonly MenuItem[]>([]);
-  // ページから読んだ、版の一覧 (一覧のないページでは、前の一覧のまま)
+  // ページから読んだ, 版の一覧 (一覧のないページでは, 前の一覧のまま)
   const [versionList, setVersionList] = useState<readonly VersionChoice[]>([]);
   // 別のファイルから読んだメニュー (ファイルの URL ごと)
   const [fileMenus, setFileMenus] = useState<Record<string, readonly MenuItem[]>>({});
-  // タブごとに、最後に開いたページ
+  // タブごとに, 最後に開いたページ
   const tabUrls = useRef<Record<number, string>>({});
   const cache = useRef(new Map<string, Entry>());
   // 見出しごとに分けて開くサイトの, 分ける前のページ (大きいので, 最後の 1 つだけ覚える)
@@ -235,7 +235,7 @@ export function useViewer(profile: SiteProfile): Viewer {
     [initial.store, storeKey],
   );
 
-  /** 待っている位置を、すぐに書き込む. */
+  /** 待っている位置を, すぐに書き込む. */
   const flush = useCallback(() => {
     window.clearTimeout(timer.current);
     const pending = latest.current;
@@ -246,7 +246,7 @@ export function useViewer(profile: SiteProfile): Viewer {
   }, [persist]);
   const job = useRef({ aborted: false });
 
-  // URL に版がないサイトの、今の版 (起動のときに 1 回だけ読む. 読めなければ undefined)
+  // URL に版がないサイトの, 今の版 (起動のときに 1 回だけ読む. 読めなければ undefined)
   const autoVersion = useRef<Promise<string | undefined>>(undefined);
   const [autoVersionValue, setAutoVersionValue] = useState<string>();
   const loadAutoVersion = useCallback((): Promise<string | undefined> => {
@@ -270,14 +270,14 @@ export function useViewer(profile: SiteProfile): Viewer {
     if (list === undefined) {
       return;
     }
-    // 版の一覧のファイルを取得する (失敗しても、今の版だけが出る)
+    // 版の一覧のファイルを取得する (失敗しても今の版だけが出る)
     api
       .fetchPage(list.url)
       .then((text) => setVersionList(list.parse(text)))
       .catch(() => undefined);
   }, [profile]);
 
-  // 転送のページから、移り先を開くときに、自分 (show) を呼ぶため
+  // 転送のページから, 移り先を開くときに, 自分 (show) を呼ぶため
   const showRef =
     useRef<(url: string, language: Lang, hops: number, fresh: boolean) => Promise<void>>(undefined);
 
@@ -332,7 +332,7 @@ export function useViewer(profile: SiteProfile): Viewer {
             cache.current.delete(cache.current.keys().next().value as string);
           }
         }
-        // 転送のページなら、移り先を開く (履歴は、移り先に置き換える. 転送が続くときは、3 回まで)
+        // 転送のページなら, 移り先を開く (履歴は, 移り先に置き換える. 転送が続くときは, 3 回まで)
         const { redirect } = found.page;
         if (
           redirect !== undefined &&
@@ -354,34 +354,34 @@ export function useViewer(profile: SiteProfile): Viewer {
         setLoading(false);
         if (language === "ja" && !found.translated && profile.japanese !== true) {
           found.partial = undefined;
-          // 1 つずつ翻訳する (ML Kit と無料の Google 翻訳) ときは、小さい単位で依頼して、経過をこまめに進める
+          // 1 つずつ翻訳する (ML Kit と無料の Google 翻訳) ときは, 小さい単位で依頼して, 経過をこまめに進める
           const { provider } = await api.getSettings();
-          // クラウドの翻訳は、いくつか同時に送る (速くなる). 無料の Google 翻訳は、断られないよう、1 つずつ
+          // クラウドの翻訳は, いくつか同時に送る (速くなる). 無料の Google 翻訳は, 断られないよう, 1 つずつ
           const limits =
             provider === "google"
               ? GOOGLE_LIMITS
               : provider === "gemini"
                 ? GEMINI_LIMITS
                 : MLKIT_LIMITS;
-          // 版のあるサイトは、版ごとに、別のキャッシュにする (URL に版がないサイトは、読み取った今の版)
+          // 版のあるサイトは, 版ごとに, 別のキャッシュにする (URL に版がないサイトは, 読み取った今の版)
           const scope = profile.versions
             ? versionOf(key, profile.versions.pattern)
             : await loadAutoVersion();
           const translated = await translatePage(
             found.page,
             (texts) => api.translate(texts, scope, fresh),
-            // 別のページに移ったあとは、前のページの経過を出さない
+            // 別のページに移ったあとは, 前のページの経過を出さない
             (next) => !signal.aborted && setProgress(next),
             signal,
             limits,
             (partial) => {
-              // 先に翻訳した上のほうから、表示する
+              // 先に翻訳した上のほうから, 表示する
               if (!signal.aborted) {
                 found.partial = partial;
                 setEntry({ ...found });
               }
             },
-            // 翻訳し直すときは、キャッシュの翻訳を先に出さない
+            // 翻訳し直すときは, キャッシュの翻訳を先に出さない
             fresh ? noLookup : (texts) => api.lookupCache(texts, scope),
           );
           found.translated = translated;
@@ -412,14 +412,14 @@ export function useViewer(profile: SiteProfile): Viewer {
   );
 
   useEffect(() => {
-    // 起動したときに、前回読んだページ (なければ、トップ) を取得して翻訳する (外部への通信を始める処理).
-    // show は、取得の前に、エラーや読み込み中の表示を、すぐに切り替える (起動のときに 1 回だけ)
+    // 起動したときに, 前回読んだページ (なければトップ) を取得して翻訳する (外部への通信を始める処理).
+    // show は, 取得の前に, エラーや読み込み中の表示を, すぐに切り替える (起動のときに 1 回だけ)
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void show(initial.start, "ja");
   }, [show, initial.start]);
 
   useEffect(() => {
-    // 画面が隠れたとき (アプリが裏に回ったとき) は、すぐに、読んだ位置を書き込む
+    // 画面が隠れたとき (アプリが裏に回ったとき) は, すぐに, 読んだ位置を書き込む
     const hide = () => document.visibilityState === "hidden" && flush();
     document.addEventListener("visibilitychange", hide);
     window.addEventListener("pagehide", flush);
@@ -435,7 +435,7 @@ export function useViewer(profile: SiteProfile): Viewer {
   const tabs = profile.tabs ?? [];
   const tab = tabIndexOf(url, tabs, versionPattern);
   const source: MenuSource | undefined = tabs.length > 0 ? tabs[tab]?.menu : profile.menu;
-  // 版のあるサイトは、今の版のメニューのファイルを読む (メニューのリンクも、今の版になる)
+  // 版のあるサイトは, 今の版のメニューのファイルを読む (メニューのリンクも今の版になる)
   const sourceUrl =
     source && source.type !== "html"
       ? versionPattern && version !== undefined
@@ -452,7 +452,7 @@ export function useViewer(profile: SiteProfile): Viewer {
     ) {
       return;
     }
-    // メニューのファイルを取得する (失敗しても、メニューが出ないだけ)
+    // メニューのファイルを取得する (失敗してもメニューが出ないだけ)
     const url = sourceUrl;
     const fetched =
       source.type === "json"
@@ -466,7 +466,7 @@ export function useViewer(profile: SiteProfile): Viewer {
     fetched
       .then((items) => setFileMenus((menus) => ({ ...menus, [url]: items })))
       .catch(() => undefined);
-    // source は、プロファイルの定数. ファイルの URL が変わったときだけ、取得する
+    // source は, プロファイルの定数. ファイルの URL が変わったときだけ, 取得する
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceUrl]);
 
@@ -497,7 +497,7 @@ export function useViewer(profile: SiteProfile): Viewer {
     (next: Metrics) => {
       setMetrics(next);
       if (!loaded) {
-        // 本文を読み込む前は、位置を上書きしない (前回の位置を、これから戻すため)
+        // 本文を読み込む前は, 位置を上書きしない (前回の位置を, これから戻すため)
         return;
       }
       const ratio = scrollRatio(next.top, next.height, next.view);
@@ -525,7 +525,7 @@ export function useViewer(profile: SiteProfile): Viewer {
   );
 
   useEffect(() => {
-    // タブごとに、最後に開いたページを覚える (タブを切り替えて、戻ったとき)
+    // タブごとに, 最後に開いたページを覚える (タブを切り替えて戻ったとき)
     tabUrls.current[tab] = url;
   }, [tab, url]);
 
@@ -559,7 +559,7 @@ export function useViewer(profile: SiteProfile): Viewer {
       const target = tabs[index];
       if (target !== undefined && index !== tab) {
         const next = tabUrls.current[index] ?? target.homeUrl;
-        // 版のあるサイトは、今の版のまま、タブを切り替える
+        // 版のあるサイトは, 今の版のまま, タブを切り替える
         open(
           versionPattern && version !== undefined
             ? withVersion(next, versionPattern, version)
@@ -581,7 +581,7 @@ export function useViewer(profile: SiteProfile): Viewer {
     goForward: () => move(forward(nav)),
     home: () => {
       const homeUrl = tabs[tab]?.homeUrl ?? profile.homeUrl;
-      // 版のあるサイトは、今の版のトップ
+      // 版のあるサイトは, 今の版のトップ
       open(
         versionPattern && version !== undefined
           ? withVersion(homeUrl, versionPattern, version)
@@ -593,8 +593,8 @@ export function useViewer(profile: SiteProfile): Viewer {
     removeBookmark: (target) => changeBookmarks(bookmarks.filter((b) => b.url !== target)),
     toggleLang,
     retry: () => {
-      // 翻訳サービスや API キーを変えたので、覚えていた翻訳を捨てて、今のサービスで翻訳し直す
-      // (サービスごとのキャッシュがあるので、前に翻訳した文章は、すぐに出る)
+      // 翻訳サービスや API キーを変えたので, 覚えていた翻訳を捨てて, 今のサービスで翻訳し直す
+      // (サービスごとのキャッシュがあるので, 前に翻訳した文章は, すぐに出る)
       cache.current.forEach((found) => {
         found.translated = undefined;
         found.partial = undefined;
@@ -607,7 +607,7 @@ export function useViewer(profile: SiteProfile): Viewer {
     },
     cancel: () => {
       log.info("Cancelled the loading and the translation");
-      // 翻訳の途中の経過は、出さなくなる. 翻訳できた分 (partial) は、表示したまま
+      // 翻訳の途中の経過は, 出さなくなる. 翻訳できた分 (partial) は, 表示したまま
       job.current.aborted = true;
       setLoading(false);
       setProgress(undefined);

@@ -8,12 +8,12 @@ import { type RefObject, useEffect, useRef, useState } from "react";
 import { pullDistance, shouldRefresh } from "../lib/pull";
 
 /**
- * 本文を、一番上で下に引いて離すと、更新する (タッチの画面. スマホなど).
+ * 本文を, 一番上で下に引いて離すと, 更新する (タッチの画面. スマホなど).
  *
  * @param box 本文のスクロールする要素
  * @param onRefresh 更新する
- * @param enabled 引けるか (取得や翻訳の最中は、引けない)
- * @returns 今、引いている距離 [px] (引いていなければ 0)
+ * @param enabled 引けるか (取得や翻訳の最中は, 引けない)
+ * @returns 今, 引いている距離 [px] (引いていなければ 0)
  */
 export function usePullRefresh(
   box: RefObject<HTMLElement | null>,
@@ -21,9 +21,9 @@ export function usePullRefresh(
   enabled: boolean,
 ): number {
   const [distance, setDistance] = useState(0);
-  // 触れ始めた位置と、そのとき一番上にあったか (触れていなければ undefined)
+  // 触れ始めた位置と, そのとき一番上にあったか (触れていなければ undefined)
   const start = useRef<{ y: number; atTop: boolean }>(undefined);
-  // タッチの処理から読む、最新の値 (処理を付け直さずに済むように)
+  // タッチの処理から読む, 最新の値 (処理を付け直さずに済むように)
   const latest = useRef({ distance: 0, onRefresh, enabled });
 
   useEffect(() => {

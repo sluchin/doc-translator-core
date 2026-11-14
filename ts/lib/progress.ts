@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-/** 本文の、スクロールの状態. */
+/** 本文の, スクロールの状態. */
 export interface Metrics {
-  /** 上から、スクロールした長さ. */
+  /** 上からスクロールした長さ. */
   readonly top: number;
   /** 本文の全体の長さ. */
   readonly height: number;
@@ -14,16 +14,16 @@ export interface Metrics {
   readonly view: number;
 }
 
-/** 本文の中の、読んでいる場所 (何画面目か). */
+/** 本文の中の, 読んでいる場所 (何画面目か). */
 export interface Position {
-  /** 見えている画面の下の端が、何画面目か (1 から). */
+  /** 見えている画面の下の端が, 何画面目か (1 から). */
   readonly index: number;
   /** 本文の全体の画面の数 (1 画面に収まるなら 1). */
   readonly total: number;
 }
 
 /**
- * 読んでいる場所を、画面の数で表す (全体が 10 画面で、今 3 画面目まで来た、など).
+ * 読んでいる場所を, 画面の数で表す (全体が 10 画面で, 今 3 画面目まで来た, など).
  *
  * @param m スクロールの状態
  * @returns 位置
@@ -37,9 +37,9 @@ export function screenPosition(m: Metrics): Position {
 }
 
 /**
- * 本文の、読んだ位置を、割合にする.
+ * 本文の, 読んだ位置を, 割合にする.
  *
- * @param top 上から、スクロールした長さ
+ * @param top 上から, スクロールした長さ
  * @param height 本文の全体の長さ
  * @param view 見えている長さ
  * @returns 0 (先頭) から 1 (末尾). 1 画面に収まるなら 0
@@ -50,18 +50,18 @@ export function scrollRatio(top: number, height: number, view: number): number {
 }
 
 /**
- * 割合から、スクロールする長さを求める (`scrollRatio` の逆).
+ * 割合から, スクロールする長さを求める (`scrollRatio` の逆).
  *
  * @param ratio 0 から 1
  * @param height 本文の全体の長さ
  * @param view 見えている長さ
- * @returns 上から、スクロールする長さ
+ * @returns 上から, スクロールする長さ
  */
 export function scrollTopFor(ratio: number, height: number, view: number): number {
   return ratio * Math.max(0, height - view);
 }
 
-/** スクロールバーのつまみの、大きさと位置. */
+/** スクロールバーのつまみの, 大きさと位置. */
 export interface Thumb {
   /** つまみの長さ [px]. */
   readonly size: number;
@@ -69,7 +69,7 @@ export interface Thumb {
   readonly offset: number;
 }
 
-/** つまみの最小の長さ [px] (本文が長くても、指でつかめるようにする). */
+/** つまみの最小の長さ [px] (本文が長くても, 指でつかめるようにする). */
 export const MIN_THUMB = 48;
 
 /**
@@ -77,7 +77,7 @@ export const MIN_THUMB = 48;
  *
  * @param m スクロールの状態
  * @param track トラック (つまみが動ける長さ) [px]
- * @returns つまみ (1 画面に収まるなど、スクロールできないときは undefined)
+ * @returns つまみ (1 画面に収まるなど, スクロールできないときは undefined)
  */
 export function thumbOf(m: Metrics, track: number): Thumb | undefined {
   if (m.height <= m.view || m.view <= 0 || track <= 0) {
@@ -88,7 +88,7 @@ export function thumbOf(m: Metrics, track: number): Thumb | undefined {
 }
 
 /**
- * 指の位置から、つまみがあるべき割合を求める (つまみの中心が、指の位置にくる).
+ * 指の位置から, つまみがあるべき割合を求める (つまみの中心が, 指の位置にくる).
  *
  * @param y 指の位置 (トラックの上端から) [px]
  * @param track トラックの長さ [px]

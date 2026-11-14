@@ -24,7 +24,7 @@ export interface DocPage {
   readonly menu: readonly MenuItem[];
   /** ページの中の, 版の一覧 (プロファイルに版の設定があるときだけ. なければ空). */
   readonly versions: readonly VersionChoice[];
-  /** 転送のページ (`<meta http-equiv="refresh">` で, 別のページに移る) なら, 移り先の絶対 URL. */
+  /** 転送のページ (`<meta http-equiv="refresh">` で別のページに移る) なら移り先の絶対 URL. */
   readonly redirect?: string;
   /** 本文を囲んでいた要素 (サイトの見た目で表示するとき. 前の版で保存したページには, ない). */
   readonly frame?: readonly FrameNode[];
@@ -33,7 +33,7 @@ export interface DocPage {
 }
 
 /**
- * ページの `<meta http-equiv="refresh" content="0; url=...">` から, 移り先を読む.
+ * ページの `<meta http-equiv="refresh" content="0; url=...">` から移り先を読む.
  *
  * @param doc ページ
  * @param url ページの URL (相対の移り先を, 絶対 URL にする)
@@ -80,7 +80,7 @@ export function extractPage(html: string, url: string, profile: SiteProfile): Do
     markTerms(content, profile.keepTerms);
   }
   if (profile.noTranslateSelectors && profile.noTranslateSelectors.length > 0) {
-    // 関数の宣言などは、表示するが、翻訳しない (「翻訳しない」印の class を付ける)
+    // 関数の宣言などは, 表示するが, 翻訳しない (「翻訳しない」印の class を付ける)
     content
       .querySelectorAll(profile.noTranslateSelectors.join(", "))
       .forEach((element) => element.classList.add("notranslate"));
@@ -95,7 +95,7 @@ export function extractPage(html: string, url: string, profile: SiteProfile): Do
   if (dropCodeLines) {
     content.querySelectorAll("pre, .code-block, .code-collapse").forEach((code) => {
       if (code.children.length === 0) {
-        // 色づけのない、文字だけのコードだけを直す (色づけの要素は、壊さない)
+        // 色づけのない, 文字だけのコードだけを直す (色づけの要素は, 壊さない)
         const lines = (code.textContent as string).split("\n");
         code.textContent = lines
           .filter((line) => !dropCodeLines.test(line))
